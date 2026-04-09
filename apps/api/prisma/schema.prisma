@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  password  String
+  createdAt DateTime @default(now())
+
+  memberships   WorkspaceMember[]
+  assignedTasks Task[]           @relation("AssignedTo")
+  messages      Message[]
+  comments      Comment[]
+  notifications Notification[]
+  pages         Page[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  createdAt DateTime @default(now())
+
+  members  WorkspaceMember[]
+  projects Project[]
+  channels Channel[]
+  pages       Page[]
+  automations Automation[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  role        Role      @default(MEMBER)
+  userId      String
+  workspaceId String
+  joinedAt    DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_members")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#6366f1")
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     Column[]
+  tasks       Task[]
+  automations Automation[]
+
+  @@map("projects")
+}
+
+model Column {
+  id        String  @id @default(cuid())
+  name      String
+  order     Int
+  color     String?
+  projectId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("columns")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  priority    Priority  @default(MEDIUM)
+  deadline    DateTime?
+  order       Int       @default(0)
+  columnId    String
+  projectId   String
+  assigneeId  String?
+  createdAt   DateTime  @default(now())
+
+  column   Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?    @relation("AssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
+  tags     Tag[]
+  comments Comment[]
+
+  @@map("tasks")
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  color String @default("#6366f1")
+
+  tasks Task[]
+
+  @@map("tags")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  authorId  String
+  createdAt DateTime @default(now())
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Channel {
+  id          String  @id @default(cuid())
+  name        String
+  isPrivate   Boolean @default(false)
+  workspaceId String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@map("channels")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  channelId String?
+  dmTo      String?
+  authorId  String
+  reactions Json     @default("[]")
+  createdAt DateTime @default(now())
+
+  author  User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  channel Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  title       String
+  content     Json     @default("[]")
+  icon        String?
+  parentId    String?
+  workspaceId String
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Page?     @relation("PageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Page[]    @relation("PageTree")
+
+  @@map("pages")
+}
+
+model Automation {
+  id          String   @id @default(cuid())
+  name        String
+  enabled     Boolean  @default(true)
+  trigger     String   // task.moved, task.assigned, task.deadline
+  condition   Json     @default("{}")  // { columnName: "Done" }
+  action      String   // notify, move, assign
+  actionData  Json     @default("{}")  // { message: "...", userId: "..." }
+  projectId   String
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("automations")
+}

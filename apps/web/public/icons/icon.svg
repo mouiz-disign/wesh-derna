@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#6366f1"/>
+  <g transform="translate(256, 256)">
+    <!-- Kanban bars -->
+    <rect x="-100" y="-80" width="24" height="160" rx="6" fill="white"/>
+    <rect x="-12" y="-80" width="24" height="120" rx="6" fill="white" opacity="0.85"/>
+    <rect x="76" y="-80" width="24" height="90" rx="6" fill="white" opacity="0.7"/>
+  </g>
+</svg>
