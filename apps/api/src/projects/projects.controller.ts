@@ -1,11 +1,30 @@
 import {
-  Controller, Post, Get, Put, Delete, Param, Body, UseGuards,
+  Controller, Post, Get, Put, Delete, Patch, Param, Body, UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { IsString, IsOptional, IsInt, IsArray } from 'class-validator';
+
+class CreateColumnDto {
+  @IsString() name!: string;
+  @IsOptional() @IsString() color?: string;
+}
+
+class UpdateColumnDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() color?: string;
+}
+
+class ReorderColumnsDto {
+  @IsArray() columnIds!: string[];
+}
+
+class ApplyTemplateDto {
+  @IsString() template!: string;
+}
 
 @ApiTags('Projects')
 @ApiBearerAuth()
@@ -45,5 +64,37 @@ export class ProjectsController {
   @Delete('projects/:id')
   delete(@Param('id') id: string) {
     return this.projectsService.delete(id);
+  }
+
+  // Column management
+  @Post('projects/:id/columns')
+  addColumn(@Param('id') id: string, @Body() dto: CreateColumnDto) {
+    return this.projectsService.addColumn(id, dto.name, dto.color);
+  }
+
+  @Put('columns/:columnId')
+  updateColumn(@Param('columnId') columnId: string, @Body() dto: UpdateColumnDto) {
+    return this.projectsService.updateColumn(columnId, dto);
+  }
+
+  @Delete('columns/:columnId')
+  deleteColumn(@Param('columnId') columnId: string) {
+    return this.projectsService.deleteColumn(columnId);
+  }
+
+  @Patch('projects/:id/columns/reorder')
+  reorderColumns(@Param('id') id: string, @Body() dto: ReorderColumnsDto) {
+    return this.projectsService.reorderColumns(id, dto.columnIds);
+  }
+
+  // Templates
+  @Get('column-templates')
+  getTemplates() {
+    return this.projectsService.getTemplates();
+  }
+
+  @Post('projects/:id/apply-template')
+  applyTemplate(@Param('id') id: string, @Body() dto: ApplyTemplateDto) {
+    return this.projectsService.applyTemplate(id, dto.template);
   }
 }

@@ -57,9 +57,9 @@ export default function WorkspaceLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="h-screen overflow-hidden bg-[var(--background)]">
       <AppSidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="ml-64 h-screen overflow-auto">{children}</main>
       <CommandPalette />
     </div>
   );

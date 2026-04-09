@@ -24,8 +24,12 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
+  firstName String?
+  lastName  String?
   avatar    String?
   password  String
+  poste     String?
+  fonction  String?
   createdAt DateTime @default(now())
 
   memberships   WorkspaceMember[]
@@ -50,6 +54,7 @@ model Workspace {
   channels Channel[]
   pages       Page[]
   automations Automation[]
+  invitations Invitation[]
 
   @@map("workspaces")
 }
@@ -112,10 +117,23 @@ model Task {
   column   Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee User?    @relation("AssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
-  tags     Tag[]
-  comments Comment[]
+  tags      Tag[]
+  comments  Comment[]
+  subtasks  Subtask[]
 
   @@map("tasks")
+}
+
+model Subtask {
+  id        String  @id @default(cuid())
+  title     String
+  done      Boolean @default(false)
+  order     Int     @default(0)
+  taskId    String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("subtasks")
 }
 
 model Tag {
@@ -218,4 +236,20 @@ model Automation {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@map("automations")
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  email       String
+  token       String   @unique @default(cuid())
+  role        Role     @default(MEMBER)
+  status      String   @default("pending") // pending, accepted, expired
+  workspaceId String
+  invitedBy   String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
 }

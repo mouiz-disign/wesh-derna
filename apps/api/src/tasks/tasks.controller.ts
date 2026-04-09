@@ -50,4 +50,25 @@ export class TasksController {
   ) {
     return this.tasksService.addComment(id, dto.content, (req as any).user.id);
   }
+
+  // Subtasks
+  @Get(':id/subtasks')
+  getSubtasks(@Param('id') id: string) {
+    return this.tasksService.getSubtasks(id);
+  }
+
+  @Post(':id/subtasks')
+  addSubtask(@Param('id') id: string, @Body() dto: { title: string }) {
+    return this.tasksService.addSubtask(id, dto.title);
+  }
+
+  @Patch('subtasks/:subtaskId/toggle')
+  toggleSubtask(@Param('subtaskId') subtaskId: string) {
+    return this.tasksService.toggleSubtask(subtaskId);
+  }
+
+  @Delete('subtasks/:subtaskId')
+  deleteSubtask(@Param('subtaskId') subtaskId: string) {
+    return this.tasksService.deleteSubtask(subtaskId);
+  }
 }

@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
+import { AddColumnButton } from "./add-column-button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import type { Project, Task, Column } from "@repo/types";
@@ -116,7 +117,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh }: Props) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full gap-4 p-6">
+      <div className="flex h-full gap-6 p-6">
         {columns.map((column) => (
           <KanbanColumn
             key={column.id}
@@ -126,6 +127,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh }: Props) {
             onRefresh={onRefresh}
           />
         ))}
+        <AddColumnButton projectId={project.id} onRefresh={onRefresh} />
       </div>
 
       <DragOverlay>

@@ -72,6 +72,159 @@ export class ProjectsService {
     return this.prisma.project.delete({ where: { id } });
   }
 
+  // ── Column management ──
+
+  async addColumn(projectId: string, name: string, color?: string) {
+    const maxOrder = await this.prisma.column.aggregate({
+      where: { projectId },
+      _max: { order: true },
+    });
+    return this.prisma.column.create({
+      data: {
+        name,
+        color: color || '#94a3b8',
+        order: (maxOrder._max.order ?? -1) + 1,
+        projectId,
+      },
+    });
+  }
+
+  async updateColumn(columnId: string, data: { name?: string; color?: string }) {
+    return this.prisma.column.update({
+      where: { id: columnId },
+      data,
+    });
+  }
+
+  async deleteColumn(columnId: string) {
+    // Move tasks to first column of the project before deleting
+    const column = await this.prisma.column.findUnique({
+      where: { id: columnId },
+      include: { tasks: true },
+    });
+    if (!column) return;
+
+    if (column.tasks.length > 0) {
+      const firstColumn = await this.prisma.column.findFirst({
+        where: { projectId: column.projectId, id: { not: columnId } },
+        orderBy: { order: 'asc' },
+      });
+      if (firstColumn) {
+        await this.prisma.task.updateMany({
+          where: { columnId },
+          data: { columnId: firstColumn.id },
+        });
+      }
+    }
+
+    return this.prisma.column.delete({ where: { id: columnId } });
+  }
+
+  async reorderColumns(projectId: string, columnIds: string[]) {
+    const updates = columnIds.map((id, index) =>
+      this.prisma.column.update({ where: { id }, data: { order: index } }),
+    );
+    await this.prisma.$transaction(updates);
+    return this.prisma.column.findMany({
+      where: { projectId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  // ── Templates ──
+
+  getTemplates() {
+    return [
+      {
+        id: 'kanban',
+        name: 'Kanban Simple',
+        description: 'Pour les equipes agiles',
+        columns: [
+          { name: 'To Do', color: '#94a3b8' },
+          { name: 'In Progress', color: '#3b82f6' },
+          { name: 'In Review', color: '#f59e0b' },
+          { name: 'Done', color: '#22c55e' },
+        ],
+      },
+      {
+        id: 'scrum',
+        name: 'Scrum / Sprint',
+        description: 'Workflow complet de sprint',
+        columns: [
+          { name: 'Backlog', color: '#94a3b8' },
+          { name: 'Sprint Ready', color: '#8b5cf6' },
+          { name: 'In Progress', color: '#3b82f6' },
+          { name: 'In Review', color: '#f59e0b' },
+          { name: 'Testing', color: '#06b6d4' },
+          { name: 'Done', color: '#22c55e' },
+        ],
+      },
+      {
+        id: 'development',
+        name: 'Developpement Logiciel',
+        description: 'Du backlog au deploiement',
+        columns: [
+          { name: 'Backlog', color: '#94a3b8' },
+          { name: 'Scoping', color: '#a78bfa' },
+          { name: 'In Design', color: '#ec4899' },
+          { name: 'Ready to Dev', color: '#8b5cf6' },
+          { name: 'In Development', color: '#3b82f6' },
+          { name: 'In Review', color: '#f59e0b' },
+          { name: 'Testing', color: '#06b6d4' },
+          { name: 'Shipped', color: '#22c55e' },
+          { name: 'Cancelled', color: '#ef4444' },
+        ],
+      },
+      {
+        id: 'marketing',
+        name: 'Marketing & Campagnes',
+        description: 'Gestion de campagnes',
+        columns: [
+          { name: 'Ideas', color: '#f59e0b' },
+          { name: 'Planning', color: '#8b5cf6' },
+          { name: 'In Production', color: '#3b82f6' },
+          { name: 'Review', color: '#06b6d4' },
+          { name: 'Published', color: '#22c55e' },
+          { name: 'Archived', color: '#94a3b8' },
+        ],
+      },
+      {
+        id: 'support',
+        name: 'Support Client',
+        description: 'Gestion des tickets',
+        columns: [
+          { name: 'New', color: '#ef4444' },
+          { name: 'Triaged', color: '#f59e0b' },
+          { name: 'In Progress', color: '#3b82f6' },
+          { name: 'Waiting', color: '#94a3b8' },
+          { name: 'Resolved', color: '#22c55e' },
+          { name: 'Closed', color: '#6b7280' },
+        ],
+      },
+    ];
+  }
+
+  async applyTemplate(projectId: string, templateId: string) {
+    const templates = this.getTemplates();
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return { error: 'Template not found' };
+
+    // Delete existing columns (and their tasks cascade)
+    await this.prisma.column.deleteMany({ where: { projectId } });
+
+    // Create new columns
+    await this.prisma.column.createMany({
+      data: template.columns.map((col, i) => ({
+        name: col.name,
+        color: col.color,
+        order: i,
+        projectId,
+      })),
+    });
+
+    return this.findById(projectId);
+  }
+
   async getStats(workspaceId: string) {
     const projects = await this.prisma.project.findMany({
       where: { workspaceId },

@@ -2,18 +2,16 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Calendar } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Task } from "@repo/types";
 
 const priorityConfig = {
-  LOW: { label: "Basse", className: "bg-slate-100 text-slate-600 border-slate-200" },
-  MEDIUM: { label: "Moyenne", className: "bg-blue-100 text-blue-700 border-blue-200" },
-  HIGH: { label: "Haute", className: "bg-orange-100 text-orange-700 border-orange-200" },
-  URGENT: { label: "Urgente", className: "bg-red-100 text-red-700 border-red-200" },
+  LOW: { label: "Basse", bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400" },
+  MEDIUM: { label: "Moyenne", bg: "bg-[#dae2ff] dark:bg-blue-900/30", text: "text-[#003d9b] dark:text-blue-300" },
+  HIGH: { label: "Haute", bg: "bg-[#ffdcc3] dark:bg-orange-900/30", text: "text-[#6a3600] dark:text-orange-300" },
+  URGENT: { label: "Urgente", bg: "bg-[#ffdad6] dark:bg-red-900/30", text: "text-[#ba1a1a] dark:text-red-300" },
 };
 
 interface Props {
@@ -45,6 +43,9 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
     .toUpperCase()
     .slice(0, 2);
 
+  const isOverdue =
+    task.deadline && new Date(task.deadline) < new Date();
+
   return (
     <div
       ref={setNodeRef}
@@ -52,63 +53,70 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
       {...attributes}
       {...listeners}
       onClick={() => onTaskClick(task.id)}
-      className={`cursor-pointer rounded-lg border bg-background p-3 shadow-sm transition-all hover:shadow-md hover:border-primary/30 ${
-        isDragging ? "opacity-50" : ""
-      } ${overlay ? "shadow-lg rotate-2 scale-105" : ""}`}
+      className={`bg-[var(--surface-lowest)] rounded-xl p-4 shadow-executive hover:shadow-executive-hover transition-all group cursor-grab active:cursor-grabbing border border-[var(--border)] ${
+        isDragging ? "opacity-50 scale-[1.02]" : "hover:scale-[1.01] hover:border-[var(--primary)]/30"
+      } ${overlay ? "shadow-lg rotate-1 scale-105" : ""}`}
     >
-      {/* Title */}
-      <p className="text-sm font-medium leading-snug">{task.title}</p>
-
-      {/* Tags */}
-      {task.tags && task.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {task.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
-              style={{
-                backgroundColor: tag.color + "20",
-                color: tag.color,
-              }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="mt-2.5 flex items-center gap-2">
-        {/* Priority */}
+      {/* Header: priority + grip */}
+      <div className="flex justify-between items-start mb-2">
         <span
-          className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${priority.className}`}
+          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${priority.bg} ${priority.text}`}
         >
           {priority.label}
         </span>
+        <GripVertical className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
 
-        {/* Deadline */}
-        {task.deadline && (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            {format(new Date(task.deadline), "dd MMM", { locale: fr })}
-          </span>
-        )}
+      {/* Title */}
+      <h4 className="font-semibold text-sm text-[var(--on-surface)] leading-snug mb-3">
+        {task.title}
+      </h4>
 
-        {/* Comments count */}
-        {task._count && task._count.comments > 0 && (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <MessageSquare className="h-3 w-3" />
-            {task._count.comments}
-          </span>
-        )}
+      {/* Description */}
+      {task.description && (
+        <p className="text-xs text-[var(--muted-foreground)] mb-3 line-clamp-2 leading-relaxed">
+          {task.description}
+        </p>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+        <div className="flex items-center gap-3">
+          {/* Deadline */}
+          {task.deadline && (
+            <span
+              className={`flex items-center gap-1 text-[11px] font-medium ${
+                isOverdue
+                  ? "text-[#ba1a1a]"
+                  : "text-[var(--muted-foreground)]"
+              }`}
+            >
+              <Calendar className="h-3 w-3" />
+              {format(new Date(task.deadline), "dd MMM", { locale: fr })}
+            </span>
+          )}
+
+          {/* Comments */}
+          {task._count && task._count.comments > 0 && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]">
+              <MessageSquare className="h-3 w-3" />
+              {task._count.comments}
+            </span>
+          )}
+        </div>
 
         {/* Assignee */}
-        {task.assignee && (
-          <Avatar className="ml-auto h-5 w-5">
-            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+        {task.assignee ? (
+          <div
+            className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-[var(--surface-lowest)]"
+            title={task.assignee.name}
+          >
+            {initials}
+          </div>
+        ) : (
+          <div className="w-7 h-7 rounded-full bg-[var(--surface-high)] border-2 border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center">
+            <span className="text-[10px] text-[var(--muted-foreground)]">?</span>
+          </div>
         )}
       </div>
     </div>

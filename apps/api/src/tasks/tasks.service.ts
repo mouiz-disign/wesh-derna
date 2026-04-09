@@ -60,6 +60,7 @@ export class TasksService {
       include: {
         assignee: { select: { id: true, name: true, avatar: true } },
         tags: true,
+        subtasks: { orderBy: { order: 'asc' } },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: { author: { select: { id: true, name: true, avatar: true } } },
@@ -148,5 +149,41 @@ export class TasksService {
     }
 
     return comment;
+  }
+
+  // ── Subtasks ──
+
+  async addSubtask(taskId: string, title: string) {
+    const maxOrder = await this.prisma.subtask.aggregate({
+      where: { taskId },
+      _max: { order: true },
+    });
+    return this.prisma.subtask.create({
+      data: {
+        title,
+        taskId,
+        order: (maxOrder._max.order ?? -1) + 1,
+      },
+    });
+  }
+
+  async toggleSubtask(subtaskId: string) {
+    const subtask = await this.prisma.subtask.findUnique({ where: { id: subtaskId } });
+    if (!subtask) return null;
+    return this.prisma.subtask.update({
+      where: { id: subtaskId },
+      data: { done: !subtask.done },
+    });
+  }
+
+  async deleteSubtask(subtaskId: string) {
+    return this.prisma.subtask.delete({ where: { id: subtaskId } });
+  }
+
+  async getSubtasks(taskId: string) {
+    return this.prisma.subtask.findMany({
+      where: { taskId },
+      orderBy: { order: 'asc' },
+    });
   }
 }

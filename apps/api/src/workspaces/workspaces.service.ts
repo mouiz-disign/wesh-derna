@@ -71,29 +71,119 @@ export class WorkspacesService {
       include: { members: true },
     });
 
-    if (!workspace) throw new NotFoundException('Workspace non trouvé');
+    if (!workspace) throw new NotFoundException('Workspace non trouve');
 
     const admin = workspace.members.find((m) => m.userId === userId);
     if (!admin || admin.role !== 'ADMIN') {
       throw new ForbiddenException('Seuls les admins peuvent inviter');
     }
 
-    const invitedUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    // Verifier si deja membre
+    const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existingUser) {
+      const alreadyMember = workspace.members.some((m) => m.userId === existingUser.id);
+      if (alreadyMember) throw new ForbiddenException('Deja membre de ce workspace');
+    }
+
+    // Verifier invitation en attente
+    const pendingInvite = await this.prisma.invitation.findFirst({
+      where: { email: dto.email, workspaceId, status: 'pending' },
     });
+    if (pendingInvite) throw new ForbiddenException('Invitation deja envoyee');
 
-    if (!invitedUser) throw new NotFoundException('Utilisateur non trouvé');
-
-    const alreadyMember = workspace.members.some((m) => m.userId === invitedUser.id);
-    if (alreadyMember) throw new ForbiddenException('Déjà membre');
-
-    return this.prisma.workspaceMember.create({
+    // Creer l'invitation
+    const invitation = await this.prisma.invitation.create({
       data: {
-        workspaceId,
-        userId: invitedUser.id,
+        email: dto.email,
         role: dto.role || 'MEMBER',
+        workspaceId,
+        invitedBy: userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
       },
-      include: { user: { select: { id: true, name: true, email: true } } },
     });
+
+    return {
+      invitation,
+      inviteLink: `${process.env.CORS_ORIGIN || 'http://localhost:7001'}/invite/${invitation.token}`,
+    };
+  }
+
+  async getInvitations(workspaceId: string) {
+    return this.prisma.invitation.findMany({
+      where: { workspaceId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getInvitationByToken(token: string) {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { token },
+      include: { workspace: { select: { id: true, name: true, logo: true } } },
+    });
+
+    if (!invitation) throw new NotFoundException('Invitation non trouvee');
+    if (invitation.status !== 'pending') throw new ForbiddenException('Invitation deja utilisee');
+    if (new Date() > invitation.expiresAt) throw new ForbiddenException('Invitation expiree');
+
+    return invitation;
+  }
+
+  async acceptInvitation(token: string, data: {
+    firstName: string;
+    lastName: string;
+    password: string;
+    poste?: string;
+    fonction?: string;
+  }) {
+    const invitation = await this.getInvitationByToken(token);
+
+    const bcrypt = await import('bcrypt');
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    // Creer ou mettre a jour l'utilisateur
+    let user = await this.prisma.user.findUnique({ where: { email: invitation.email } });
+
+    if (user) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          name: `${data.firstName} ${data.lastName}`,
+          password: hashedPassword,
+          poste: data.poste,
+          fonction: data.fonction,
+        },
+      });
+    } else {
+      user = await this.prisma.user.create({
+        data: {
+          email: invitation.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          name: `${data.firstName} ${data.lastName}`,
+          password: hashedPassword,
+          poste: data.poste,
+          fonction: data.fonction,
+        },
+      });
+    }
+
+    // Ajouter au workspace
+    await this.prisma.workspaceMember.create({
+      data: {
+        workspaceId: invitation.workspaceId,
+        userId: user.id,
+        role: invitation.role,
+      },
+    });
+
+    // Marquer l'invitation comme acceptee
+    await this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: 'accepted' },
+    });
+
+    return { user: { id: user.id, email: user.email, name: user.name } };
   }
 }

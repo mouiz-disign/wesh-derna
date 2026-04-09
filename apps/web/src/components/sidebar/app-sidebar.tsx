@@ -5,23 +5,28 @@ import { useParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
-  Kanban,
-  MessageSquare,
+  Search,
   Bell,
   Plus,
   LogOut,
-  FolderKanban,
   Hash,
-  ChevronDown,
-  Users,
   Sun,
   Moon,
   BarChart3,
   FileText,
+  MessageSquare,
+  Users,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  Layout,
+  Folder,
+  Settings,
+  HelpCircle,
+  Archive,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
@@ -33,7 +38,8 @@ import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import type { ProjectPreview, Channel, Notification } from "@repo/types";
+import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
+import type { ProjectPreview, Channel } from "@repo/types";
 
 export function AppSidebar() {
   const params = useParams();
@@ -46,6 +52,9 @@ export function AppSidebar() {
   const [projects, setProjects] = useState<ProjectPreview[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(true);
+  const [channelsOpen, setChannelsOpen] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -58,20 +67,12 @@ export function AppSidebar() {
         setProjects(projRes.data);
         setChannels(chanRes.data);
         setUnreadCount(notifRes.data);
-      } catch {
-        // handled by layout
-      }
+      } catch {}
     };
     load();
-
-    // Listen for new notifications
     const socket = connectSocket();
-    socket.on("notification:new", () => {
-      setUnreadCount((c) => c + 1);
-    });
-    return () => {
-      socket.off("notification:new");
-    };
+    socket.on("notification:new", () => setUnreadCount((c) => c + 1));
+    return () => { socket.off("notification:new"); };
   }, [params.workspaceId]);
 
   const handleLogout = () => {
@@ -87,152 +88,231 @@ export function AppSidebar() {
     .slice(0, 2);
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
-      {/* Workspace header */}
-      <div className="flex items-center gap-2 border-b p-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-          {workspace?.name?.charAt(0)?.toUpperCase()}
+    <aside className="h-full w-64 fixed left-0 top-0 z-50 flex flex-col bg-[#1a1d2e] text-[#c8cad8]">
+      {/* Brand + Avatar */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">W</span>
+          </div>
+          <span className="text-base font-bold text-white tracking-tight">
+            {workspace?.name || "Wesh Derna"}
+          </span>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="truncate text-sm font-semibold">{workspace?.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {workspace?.members?.length || 0} membre
-            {(workspace?.members?.length || 0) !== 1 ? "s" : ""}
-          </p>
+        <div className="flex items-center gap-1">
+          <div className="w-7 h-7 rounded-full bg-[#e85d3a] flex items-center justify-center text-[10px] font-bold text-white">
+            {initials}
+          </div>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-1 rounded text-[#8b8da0] hover:text-white transition-colors"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
         </div>
-        {/* Dark mode toggle */}
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-        >
-          <Sun className="h-4 w-4 hidden dark:block" />
-          <Moon className="h-4 w-4 block dark:hidden" />
+      </div>
+
+      {/* Search */}
+      <div className="px-3 mb-1">
+        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#8b8da0] hover:bg-[#252839] rounded-lg transition-colors">
+          <Search className="h-4 w-4" />
+          <span>Rechercher</span>
+          <span className="ml-auto text-[11px] bg-[#252839] px-1.5 py-0.5 rounded text-[#6b6d80]">⌘K</span>
         </button>
       </div>
 
-      <ScrollArea className="flex-1 px-3 py-2">
-        {/* Navigation */}
-        <div className="mb-4">
-          <NavItem
+      {/* Top nav */}
+      <div className="px-2 mb-2">
+        <NavItem
+          href={`/w/${params.workspaceId}/notifications`}
+          icon={Bell}
+          label="Boite de reception"
+          active={pathname.includes("/notifications")}
+          badge={unreadCount}
+        />
+        <NavItem
+          href={`/w/${params.workspaceId}/messages`}
+          icon={MessageSquare}
+          label="Messages"
+          active={pathname.includes("/messages")}
+        />
+        <NavItem
+          href={`/w/${params.workspaceId}/pages`}
+          icon={FileText}
+          label="Pages"
+          active={pathname.includes("/pages")}
+        />
+        <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#8b8da0] hover:bg-[#252839] rounded-lg transition-colors">
+          <MoreHorizontal className="h-4 w-4" />
+          <span>Plus</span>
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-[#2d3044] mx-3 mb-2" />
+
+      <ScrollArea className="flex-1 px-2">
+        {/* Espace */}
+        <div className="px-1 mb-2">
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6b6d80]">
+              Espace
+            </span>
+            <MoreHorizontal className="h-3.5 w-3.5 text-[#6b6d80] cursor-pointer hover:text-white" />
+          </div>
+
+          {/* Workspace selector */}
+          <Link
             href={`/w/${params.workspaceId}`}
-            icon={FolderKanban}
-            label="Dashboard"
-            active={pathname === `/w/${params.workspaceId}`}
-          />
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+              pathname === `/w/${params.workspaceId}`
+                ? "bg-[#252839] text-white"
+                : "text-[#c8cad8] hover:bg-[#252839]",
+            )}
+          >
+            <div className="w-5 h-5 rounded bg-emerald-600/30 flex items-center justify-center">
+              <span className="text-[10px] text-emerald-400">🏢</span>
+            </div>
+            <span className="font-medium">{workspace?.name}</span>
+            <ChevronDown className="h-3 w-3 ml-auto text-[#6b6d80]" />
+          </Link>
+
           <NavItem
-            href={`/w/${params.workspaceId}/messages`}
-            icon={MessageSquare}
-            label="Messages"
-            active={pathname.includes("/messages")}
-          />
-          <NavItem
-            href={`/w/${params.workspaceId}/notifications`}
-            icon={Bell}
-            label="Notifications"
-            active={pathname.includes("/notifications")}
-            badge={unreadCount}
+            href={`/w/${params.workspaceId}/analytics`}
+            icon={Layout}
+            label="Apercu de l'espace"
+            active={pathname.includes("/analytics")}
           />
           <NavItem
             href={`/w/${params.workspaceId}/members`}
             icon={Users}
-            label="Membres"
+            label="Equipe"
             active={pathname.includes("/members")}
-          />
-          <NavItem
-            href={`/w/${params.workspaceId}/analytics`}
-            icon={BarChart3}
-            label="Analytics"
-            active={pathname.includes("/analytics")}
-          />
-          <NavItem
-            href={`/w/${params.workspaceId}/pages`}
-            icon={FileText}
-            label="Pages"
-            active={pathname.includes("/pages")}
           />
         </div>
 
-        <Separator className="mb-3" />
-
-        {/* Projects */}
-        <div className="mb-4">
-          <div className="mb-1 flex items-center justify-between px-2">
-            <span className="text-xs font-semibold uppercase text-muted-foreground">
-              Projets
-            </span>
-            <Link href={`/w/${params.workspaceId}?new=true`}>
-              <Plus className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-            </Link>
+        {/* Projets et dossiers */}
+        <div className="px-1 mb-2">
+          <div className="w-full flex items-center justify-between px-2 py-1 group cursor-pointer">
+            <div
+              className="flex items-center gap-1"
+              onClick={() => setProjectsOpen(!projectsOpen)}
+            >
+              {projectsOpen ? (
+                <ChevronDown className="h-3 w-3 text-[#6b6d80]" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-[#6b6d80]" />
+              )}
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6b6d80]">
+                Projets et dossiers
+              </span>
+            </div>
+            <button
+              onClick={() => setShowCreateProject(true)}
+              className="opacity-0 group-hover:opacity-100 text-[#6b6d80] hover:text-white transition-all"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
-          {projects.map((project) => (
-            <NavItem
-              key={project.id}
-              href={`/w/${params.workspaceId}/projects/${project.id}`}
-              label={project.name}
-              active={pathname.includes(`/projects/${project.id}`)}
-              dot={project.color}
-            />
-          ))}
-          {projects.length === 0 && (
-            <p className="px-2 py-1 text-xs text-muted-foreground">
-              Aucun projet
-            </p>
+
+          {projectsOpen && (
+            <div className="mt-1">
+              {projects.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/w/${params.workspaceId}/projects/${project.id}`}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+                    pathname.includes(`/projects/${project.id}`)
+                      ? "bg-[#2a2d45] text-white font-medium"
+                      : "text-[#c8cad8] hover:bg-[#252839]",
+                  )}
+                >
+                  <ChevronRight className="h-3 w-3 text-[#6b6d80]" />
+                  <Folder className="h-4 w-4 text-blue-400" />
+                  <span className="truncate">{project.name}</span>
+                </Link>
+              ))}
+              {projects.length === 0 && (
+                <p className="px-3 py-2 text-xs text-[#6b6d80]">Aucun projet</p>
+              )}
+
+              {/* Add project button */}
+              <button
+                onClick={() => setShowCreateProject(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 mt-1 rounded-lg text-sm font-semibold text-white bg-[#e85d3a] hover:bg-[#d14e2e] transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Nouveau projet
+              </button>
+            </div>
           )}
         </div>
 
-        <Separator className="mb-3" />
-
         {/* Channels */}
-        <div>
-          <div className="mb-1 flex items-center justify-between px-2">
-            <span className="text-xs font-semibold uppercase text-muted-foreground">
+        <div className="px-1 mb-2">
+          <button
+            onClick={() => setChannelsOpen(!channelsOpen)}
+            className="w-full flex items-center gap-1 px-2 py-1"
+          >
+            {channelsOpen ? (
+              <ChevronDown className="h-3 w-3 text-[#6b6d80]" />
+            ) : (
+              <ChevronRight className="h-3 w-3 text-[#6b6d80]" />
+            )}
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6b6d80]">
               Channels
             </span>
-            <Plus className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
-          </div>
-          {channels.map((channel) => (
-            <NavItem
-              key={channel.id}
-              href={`/w/${params.workspaceId}/messages/${channel.id}`}
-              icon={Hash}
-              label={channel.name}
-              active={pathname.includes(`/messages/${channel.id}`)}
-            />
-          ))}
-          {channels.length === 0 && (
-            <p className="px-2 py-1 text-xs text-muted-foreground">
-              Aucun channel
-            </p>
+          </button>
+
+          {channelsOpen && (
+            <div className="mt-1">
+              {channels.map((channel) => (
+                <Link
+                  key={channel.id}
+                  href={`/w/${params.workspaceId}/messages/${channel.id}`}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+                    pathname.includes(`/messages/${channel.id}`)
+                      ? "bg-[#2a2d45] text-white"
+                      : "text-[#c8cad8] hover:bg-[#252839]",
+                  )}
+                >
+                  <Hash className="h-3.5 w-3.5 text-[#6b6d80]" />
+                  <span className="truncate">{channel.name}</span>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* User footer */}
-      <div className="border-t p-3">
+      {/* Bottom */}
+      <div className="border-t border-[#2d3044] px-3 py-2">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-sidebar-accent">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="flex-1 truncate text-left text-sm">
-              {user?.name}
-            </span>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-[#8b8da0] hover:bg-[#252839] transition-colors">
+            <Settings className="h-4 w-4" />
+            <span>Parametres</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-destructive"
-            >
+            <DropdownMenuItem onClick={handleLogout} className="text-red-500">
               <LogOut className="mr-2 h-4 w-4" />
               Se deconnecter
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+
+      <CreateProjectDialog
+        open={showCreateProject}
+        onOpenChange={setShowCreateProject}
+        onCreated={() => {
+          setShowCreateProject(false);
+          window.location.reload();
+        }}
+      />
+    </aside>
   );
 }
 
@@ -241,37 +321,28 @@ function NavItem({
   icon: Icon,
   label,
   active,
-  dot,
   badge,
 }: {
   href: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   active: boolean;
-  dot?: string;
   badge?: number;
 }) {
   return (
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-          : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          ? "bg-[#252839] text-white font-medium"
+          : "text-[#8b8da0] hover:bg-[#252839] hover:text-[#c8cad8]",
       )}
     >
-      {dot ? (
-        <div
-          className="h-2.5 w-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: dot }}
-        />
-      ) : Icon ? (
-        <Icon className="h-4 w-4 shrink-0" />
-      ) : null}
+      <Icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
           {badge}
         </span>
       )}
