@@ -1,19 +1,22 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, Square, Loader2, Trash2 } from "lucide-react";
+import { Mic, Square, Trash2, Play, Pause } from "lucide-react";
 
-interface Props {
+// ── Voice Recorder ──
+
+interface RecorderProps {
   onRecorded: (blob: Blob) => void;
   disabled?: boolean;
 }
 
-export function VoiceRecorder({ onRecorded, disabled }: Props) {
+export function VoiceRecorder({ onRecorded, disabled }: RecorderProps) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef(0);
 
   const startRecording = useCallback(async () => {
     try {
@@ -26,6 +29,7 @@ export function VoiceRecorder({ onRecorded, disabled }: Props) {
 
       chunksRef.current = [];
       mediaRecorderRef.current = mediaRecorder;
+      startTimeRef.current = Date.now();
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -37,7 +41,7 @@ export function VoiceRecorder({ onRecorded, disabled }: Props) {
         stream.getTracks().forEach((t) => t.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(100); // collect data every 100ms for better chunks
       setRecording(true);
       setElapsed(0);
       timerRef.current = setInterval(() => setElapsed((prev) => prev + 1), 1000);
@@ -64,8 +68,7 @@ export function VoiceRecorder({ onRecorded, disabled }: Props) {
     };
   }, []);
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   if (recording) {
     return (
@@ -78,7 +81,7 @@ export function VoiceRecorder({ onRecorded, disabled }: Props) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
         </span>
-        {formatTime(elapsed)}
+        {fmt(elapsed)}
         <Square className="h-3 w-3 fill-current" />
       </button>
     );
@@ -98,6 +101,8 @@ export function VoiceRecorder({ onRecorded, disabled }: Props) {
   );
 }
 
+// ── Voice Player ──
+
 interface PlayerProps {
   src: string;
   compact?: boolean;
@@ -105,76 +110,143 @@ interface PlayerProps {
 }
 
 export function VoicePlayer({ src, compact, onRemove }: PlayerProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  // Create and manage audio element imperatively to avoid React lifecycle issues
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = src;
+    audioRef.current = audio;
+
+    const onLoadedData = () => {
+      // WebM files often report Infinity duration - try to fix it
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const onDurationChange = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const onEnded = () => {
+      setPlaying(false);
+      setCurrentTime(0);
+      audio.currentTime = 0;
+      cancelAnimationFrame(rafRef.current);
+    };
+
+    const onError = () => {
+      setPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener("loadeddata", onLoadedData);
+    audio.addEventListener("durationchange", onDurationChange);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
+
+    return () => {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load(); // release resources
+      audio.removeEventListener("loadeddata", onLoadedData);
+      audio.removeEventListener("durationchange", onDurationChange);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+      cancelAnimationFrame(rafRef.current);
+      audioRef.current = null;
+      setPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    };
+  }, [src]);
+
+  // Use requestAnimationFrame for smooth progress tracking
+  useEffect(() => {
+    if (!playing) {
+      cancelAnimationFrame(rafRef.current);
+      return;
+    }
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      setCurrentTime(audio.currentTime);
+
+      // Fallback: if duration is still unknown, detect end by checking if audio paused itself
+      if (audio.paused && playing) {
+        setPlaying(false);
+        setCurrentTime(0);
+        audio.currentTime = 0;
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     const audio = audioRef.current;
     if (!audio) return;
+
     if (playing) {
       audio.pause();
+      setPlaying(false);
     } else {
-      audio.play();
+      audio.play().then(() => {
+        setPlaying(true);
+      }).catch(() => {
+        // Autoplay blocked or audio error
+        setPlaying(false);
+      });
     }
   };
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, "0")}`;
+  const fmt = (s: number) => {
+    if (!isFinite(s) || isNaN(s) || s < 0) return "0:00";
+    return `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, "0")}`;
+  };
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progress = duration > 0 && isFinite(duration) ? Math.min((currentTime / duration) * 100, 100) : 0;
 
   if (compact) {
     return (
-      <>
-        <audio
-          ref={audioRef}
-          src={src}
-          preload="metadata"
-          onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-          onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={() => setPlaying(false)}
-        />
-        <button
-          onClick={togglePlay}
-          className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]"
-          title="Ecouter le vocal"
-        >
-          <Mic className="h-3 w-3" />
-          {playing ? formatTime(currentTime) : formatTime(duration || 0)}
-        </button>
-      </>
+      <button
+        onClick={togglePlay}
+        className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]"
+        title="Ecouter le vocal"
+      >
+        {playing ? <Pause className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+        {playing ? fmt(currentTime) : fmt(duration)}
+      </button>
     );
   }
 
   return (
     <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--surface-low)]">
-      <audio
-        ref={audioRef}
-        src={src}
-        preload="metadata"
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
-      />
-
       <button
         type="button"
         onClick={togglePlay}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full gradient-primary text-white transition-all hover:shadow-md"
       >
         {playing ? (
-          <Square className="h-3.5 w-3.5 fill-current" />
+          <Pause className="h-3.5 w-3.5" />
         ) : (
-          <svg className="h-4 w-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          <Play className="h-3.5 w-3.5 ml-0.5" />
         )}
       </button>
 
@@ -182,12 +254,12 @@ export function VoicePlayer({ src, compact, onRemove }: PlayerProps) {
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-high)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-[var(--primary)] transition-all"
+              className="h-full rounded-full bg-[var(--primary)] transition-[width] duration-100"
               style={{ width: `${progress}%` }}
             />
           </div>
           <span className="text-[10px] font-medium text-[var(--muted-foreground)] tabular-nums shrink-0">
-            {playing ? formatTime(currentTime) : formatTime(duration || 0)}
+            {playing ? fmt(currentTime) : fmt(duration)}
           </span>
         </div>
         <p className="text-[10px] text-[var(--muted-foreground)] mt-1 flex items-center gap-1">
@@ -199,7 +271,12 @@ export function VoicePlayer({ src, compact, onRemove }: PlayerProps) {
       {onRemove && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            audioRef.current?.pause();
+            setPlaying(false);
+            onRemove();
+          }}
           className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           title="Supprimer le vocal"
         >
