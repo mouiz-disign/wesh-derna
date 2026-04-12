@@ -78,25 +78,12 @@ export class WorkspacesService {
       throw new ForbiddenException('Seuls les admins peuvent inviter');
     }
 
-    // Verifier si deja membre
-    const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existingUser) {
-      const alreadyMember = workspace.members.some((m) => m.userId === existingUser.id);
-      if (alreadyMember) throw new ForbiddenException('Deja membre de ce workspace');
-    }
-
-    // Verifier invitation en attente
-    const pendingInvite = await this.prisma.invitation.findFirst({
-      where: { email: dto.email, workspaceId, status: 'pending' },
-    });
-    if (pendingInvite) throw new ForbiddenException('Invitation deja envoyee');
-
-    // Creer l'invitation
+    // Creer l'invitation (lien generique, avec projet optionnel)
     const invitation = await this.prisma.invitation.create({
       data: {
-        email: dto.email,
         role: dto.role || 'MEMBER',
         workspaceId,
+        projectId: dto.projectId || null,
         invitedBy: userId,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
       },
@@ -118,7 +105,10 @@ export class WorkspacesService {
   async getInvitationByToken(token: string) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { token },
-      include: { workspace: { select: { id: true, name: true, logo: true } } },
+      include: {
+        workspace: { select: { id: true, name: true, logo: true } },
+        project: { select: { id: true, name: true } },
+      },
     });
 
     if (!invitation) throw new NotFoundException('Invitation non trouvee');
@@ -129,6 +119,7 @@ export class WorkspacesService {
   }
 
   async acceptInvitation(token: string, data: {
+    email: string;
     firstName: string;
     lastName: string;
     password: string;
@@ -140,8 +131,17 @@ export class WorkspacesService {
     const bcrypt = await import('bcrypt');
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // Verifier si deja membre
+    const existingUser = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existingUser) {
+      const alreadyMember = await this.prisma.workspaceMember.findFirst({
+        where: { workspaceId: invitation.workspaceId, userId: existingUser.id },
+      });
+      if (alreadyMember) throw new ForbiddenException('Deja membre de ce workspace');
+    }
+
     // Creer ou mettre a jour l'utilisateur
-    let user = await this.prisma.user.findUnique({ where: { email: invitation.email } });
+    let user = existingUser;
 
     if (user) {
       user = await this.prisma.user.update({
@@ -158,7 +158,7 @@ export class WorkspacesService {
     } else {
       user = await this.prisma.user.create({
         data: {
-          email: invitation.email,
+          email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
           name: `${data.firstName} ${data.lastName}`,
@@ -170,13 +170,28 @@ export class WorkspacesService {
     }
 
     // Ajouter au workspace
-    await this.prisma.workspaceMember.create({
-      data: {
+    await this.prisma.workspaceMember.upsert({
+      where: { userId_workspaceId: { userId: user.id, workspaceId: invitation.workspaceId } },
+      create: {
         workspaceId: invitation.workspaceId,
         userId: user.id,
         role: invitation.role,
       },
+      update: {},
     });
+
+    // Ajouter au projet si l'invitation est liee a un projet
+    if (invitation.projectId) {
+      await this.prisma.projectMember.upsert({
+        where: { userId_projectId: { userId: user.id, projectId: invitation.projectId } },
+        create: {
+          projectId: invitation.projectId,
+          userId: user.id,
+          role: invitation.role,
+        },
+        update: {},
+      });
+    }
 
     // Marquer l'invitation comme acceptee
     await this.prisma.invitation.update({

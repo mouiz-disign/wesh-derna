@@ -32,7 +32,8 @@ model User {
   fonction  String?
   createdAt DateTime @default(now())
 
-  memberships   WorkspaceMember[]
+  memberships        WorkspaceMember[]
+  projectMemberships ProjectMember[]
   assignedTasks Task[]           @relation("AssignedTo")
   messages      Message[]
   comments      Comment[]
@@ -84,9 +85,25 @@ model Project {
   workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   columns     Column[]
   tasks       Task[]
+  members     ProjectMember[]
   automations Automation[]
+  invitations Invitation[]
 
   @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  role      Role     @default(MEMBER)
+  userId    String
+  projectId String
+  joinedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("project_members")
 }
 
 model Column {
@@ -240,16 +257,18 @@ model Automation {
 
 model Invitation {
   id          String   @id @default(cuid())
-  email       String
+  email       String?
   token       String   @unique @default(cuid())
   role        Role     @default(MEMBER)
   status      String   @default("pending") // pending, accepted, expired
   workspaceId String
+  projectId   String?
   invitedBy   String
   createdAt   DateTime @default(now())
   expiresAt   DateTime
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("invitations")
 }

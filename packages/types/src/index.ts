@@ -75,6 +75,14 @@ export interface ProjectPreview {
   _count: { tasks: number };
 }
 
+export interface ProjectMember {
+  id: string;
+  role: Role;
+  userId: string;
+  projectId: string;
+  user: UserPreview;
+}
+
 // Column
 export interface Column {
   id: string;

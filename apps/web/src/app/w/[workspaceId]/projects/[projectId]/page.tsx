@@ -30,7 +30,8 @@ import {
   Star,
   Zap,
 } from "lucide-react";
-import type { Project, WorkspaceMember } from "@repo/types";
+import { ProjectInviteDialog } from "@/components/projects/project-invite-dialog";
+import type { Project, WorkspaceMember, ProjectMember } from "@repo/types";
 
 type ViewMode = "board" | "table" | "gantt";
 
@@ -41,6 +42,9 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("board");
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+  const [filterAssigneeId, setFilterAssigneeId] = useState<string | null>(null);
 
   const fetchProject = async () => {
     try {
@@ -51,8 +55,16 @@ export default function ProjectPage() {
     }
   };
 
+  const fetchMembers = async () => {
+    try {
+      const { data } = await api.get(`/projects/${params.projectId}/members`);
+      setProjectMembers(data);
+    } catch {}
+  };
+
   useEffect(() => {
     fetchProject();
+    fetchMembers();
   }, [params.projectId]);
 
   if (loading || !project) {
@@ -101,7 +113,10 @@ export default function ProjectPage() {
               <Zap className="h-3.5 w-3.5" />
               Automatisation
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors">
+            <button
+              onClick={() => setShowInviteDialog(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors"
+            >
               <Share2 className="h-3.5 w-3.5" />
               Partager
             </button>
@@ -125,7 +140,10 @@ export default function ProjectPage() {
                 </div>
               )}
             </div>
-            <button className="h-7 w-7 rounded-full gradient-primary flex items-center justify-center text-white hover:shadow-md transition-all">
+            <button
+              onClick={() => setShowInviteDialog(true)}
+              className="h-7 w-7 rounded-full gradient-primary flex items-center justify-center text-white hover:shadow-md transition-all"
+            >
               <Plus className="h-4 w-4" />
             </button>
           </div>
@@ -180,10 +198,47 @@ export default function ProjectPage() {
 
           {/* Right: Filter & actions */}
           <div className="flex items-center gap-1">
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
-              <Filter className="h-3.5 w-3.5" />
-              Filtre
-            </button>
+            <div className="relative group">
+              <button
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  filterAssigneeId
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface-low)]"
+                }`}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                {filterAssigneeId
+                  ? projectMembers.find((m) => m.userId === filterAssigneeId)?.user.name || "Filtre"
+                  : "Filtre"}
+              </button>
+              <div className="absolute top-full right-0 mt-1 w-48 bg-[var(--surface-lowest)] rounded-xl shadow-xl border border-[var(--border)] py-1 hidden group-hover:block z-50">
+                <button
+                  onClick={() => setFilterAssigneeId(null)}
+                  className={`w-full px-3 py-2 text-left text-xs hover:bg-[var(--surface-low)] transition-colors ${
+                    !filterAssigneeId ? "font-bold text-[var(--primary)]" : ""
+                  }`}
+                >
+                  Tous les membres
+                </button>
+                {projectMembers.map((m) => {
+                  const initials = m.user.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                  return (
+                    <button
+                      key={m.userId}
+                      onClick={() => setFilterAssigneeId(m.userId)}
+                      className={`w-full px-3 py-2 text-left text-xs hover:bg-[var(--surface-low)] transition-colors flex items-center gap-2 ${
+                        filterAssigneeId === m.userId ? "font-bold text-[var(--primary)]" : ""
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white">
+                        {initials}
+                      </div>
+                      {m.user.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <ArrowUpDown className="h-3.5 w-3.5" />
               Nom
@@ -216,6 +271,7 @@ export default function ProjectPage() {
             project={project}
             onTaskClick={(taskId) => setSelectedTaskId(taskId)}
             onRefresh={fetchProject}
+            filterAssigneeId={filterAssigneeId}
           />
         </div>
       ) : viewMode === "table" ? (
@@ -227,6 +283,14 @@ export default function ProjectPage() {
         open={!!selectedTaskId}
         onOpenChange={(open) => !open && setSelectedTaskId(null)}
         onUpdated={fetchProject}
+      />
+
+      <ProjectInviteDialog
+        workspaceId={params.workspaceId as string}
+        projectId={params.projectId as string}
+        projectName={project.name}
+        open={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
       />
     </div>
   );

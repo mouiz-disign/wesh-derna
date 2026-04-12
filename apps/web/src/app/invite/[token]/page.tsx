@@ -13,6 +13,7 @@ interface InvitationData {
   email: string;
   role: string;
   workspace: { id: string; name: string };
+  project?: { id: string; name: string } | null;
 }
 
 export default function InvitePage() {
@@ -24,6 +25,7 @@ export default function InvitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
+    email: "",
     firstName: "",
     lastName: "",
     password: "",
@@ -58,6 +60,7 @@ export default function InvitePage() {
     setSubmitting(true);
     try {
       await api.post(`/invitations/${params.token}/accept`, {
+        email: form.email,
         firstName: form.firstName,
         lastName: form.lastName,
         password: form.password,
@@ -67,13 +70,16 @@ export default function InvitePage() {
 
       // Auto-login
       const loginRes = await api.post("/auth/login", {
-        email: invitation!.email,
+        email: form.email,
         password: form.password,
       });
       setAuth(loginRes.data.user, loginRes.data.token);
 
       toast.success("Bienvenue dans l'equipe !");
-      router.push(`/w/${invitation!.workspace.id}`);
+      const redirectPath = invitation!.project
+        ? `/w/${invitation!.workspace.id}/projects/${invitation!.project.id}`
+        : `/w/${invitation!.workspace.id}`;
+      router.push(redirectPath);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Erreur lors de l'inscription");
     } finally {
@@ -117,7 +123,9 @@ export default function InvitePage() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-headline font-bold">
-              Rejoindre {invitation.workspace.name}
+              {invitation.project
+                ? `Rejoindre le projet ${invitation.project.name}`
+                : `Rejoindre ${invitation.workspace.name}`}
             </h1>
             <p className="text-sm text-[var(--muted-foreground)] mt-1">
               Vous avez ete invite en tant que{" "}
@@ -129,9 +137,6 @@ export default function InvitePage() {
                     : "Membre"}
               </span>
             </p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-1">
-              {invitation.email}
-            </p>
           </div>
         </div>
 
@@ -140,6 +145,20 @@ export default function InvitePage() {
           onSubmit={handleSubmit}
           className="bg-[var(--surface-lowest)] rounded-xl p-6 shadow-executive space-y-4"
         >
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              Email *
+            </label>
+            <Input
+              required
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="votre@email.com"
+              className="bg-[var(--surface-low)] border-none"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">

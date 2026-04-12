@@ -1,6 +1,7 @@
 import {
-  Controller, Post, Get, Put, Delete, Patch, Param, Body, UseGuards,
+  Controller, Post, Get, Put, Delete, Patch, Param, Body, UseGuards, Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -37,13 +38,14 @@ export class ProjectsController {
   create(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CreateProjectDto,
+    @Req() req: Request,
   ) {
-    return this.projectsService.create(workspaceId, dto);
+    return this.projectsService.create(workspaceId, dto, (req as any).user.id);
   }
 
   @Get('workspaces/:workspaceId/projects')
-  findByWorkspace(@Param('workspaceId') workspaceId: string) {
-    return this.projectsService.findByWorkspace(workspaceId);
+  findByWorkspace(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
+    return this.projectsService.findByWorkspace(workspaceId, (req as any).user.id);
   }
 
   @Get('workspaces/:workspaceId/stats')
@@ -52,8 +54,13 @@ export class ProjectsController {
   }
 
   @Get('projects/:id')
-  findById(@Param('id') id: string) {
-    return this.projectsService.findById(id);
+  findById(@Param('id') id: string, @Req() req: Request) {
+    return this.projectsService.findById(id, (req as any).user.id);
+  }
+
+  @Get('projects/:id/members')
+  getProjectMembers(@Param('id') id: string) {
+    return this.projectsService.getProjectMembers(id);
   }
 
   @Put('projects/:id')

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -7,7 +7,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(workspaceId: string, dto: CreateProjectDto) {
+  async create(workspaceId: string, dto: CreateProjectDto, userId: string) {
     const project = await this.prisma.project.create({
       data: {
         name: dto.name,
@@ -24,21 +24,35 @@ export class ProjectsService {
             ],
           },
         },
+        members: {
+          create: { userId, role: 'ADMIN' },
+        },
       },
       include: { columns: { orderBy: { order: 'asc' } } },
     });
     return project;
   }
 
-  async findByWorkspace(workspaceId: string) {
+  private async isWorkspaceAdmin(userId: string, workspaceId: string): Promise<boolean> {
+    const member = await this.prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId } },
+    });
+    return member?.role === 'ADMIN';
+  }
+
+  async findByWorkspace(workspaceId: string, userId: string) {
+    const isAdmin = await this.isWorkspaceAdmin(userId, workspaceId);
     return this.prisma.project.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(!isAdmin && { members: { some: { userId } } }),
+      },
       include: { _count: { select: { tasks: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findById(id: string) {
+  private async findByIdInternal(id: string) {
     const project = await this.prisma.project.findUnique({
       where: { id },
       include: {
@@ -60,6 +74,29 @@ export class ProjectsService {
     });
     if (!project) throw new NotFoundException('Projet non trouvé');
     return project;
+  }
+
+  async findById(id: string, userId: string) {
+    const project = await this.findByIdInternal(id);
+
+    // Check access: workspace admin OR project member
+    const isAdmin = await this.isWorkspaceAdmin(userId, project.workspaceId);
+    if (!isAdmin) {
+      const isMember = await this.prisma.projectMember.findUnique({
+        where: { userId_projectId: { userId, projectId: id } },
+      });
+      if (!isMember) throw new ForbiddenException('Acces refuse a ce projet');
+    }
+
+    return project;
+  }
+
+  async getProjectMembers(projectId: string) {
+    return this.prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+      orderBy: { joinedAt: 'asc' },
+    });
   }
 
   async update(id: string, dto: UpdateProjectDto) {
@@ -223,7 +260,7 @@ export class ProjectsService {
       })),
     });
 
-    return this.findById(projectId);
+    return this.findByIdInternal(projectId);
   }
 
   async getStats(workspaceId: string) {

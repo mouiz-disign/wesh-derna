@@ -27,9 +27,10 @@ interface Props {
   project: Project;
   onTaskClick: (taskId: string) => void;
   onRefresh: () => void;
+  filterAssigneeId?: string | null;
 }
 
-export function KanbanBoard({ project, onTaskClick, onRefresh }: Props) {
+export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId }: Props) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [columns, setColumns] = useState<Column[]>(project.columns);
 
@@ -118,15 +119,20 @@ export function KanbanBoard({ project, onTaskClick, onRefresh }: Props) {
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-6 p-6">
-        {columns.map((column) => (
-          <KanbanColumn
-            key={column.id}
-            column={column}
-            projectId={project.id}
-            onTaskClick={onTaskClick}
-            onRefresh={onRefresh}
-          />
-        ))}
+        {columns.map((column) => {
+          const filteredColumn = filterAssigneeId
+            ? { ...column, tasks: column.tasks.filter((t) => t.assigneeId === filterAssigneeId) }
+            : column;
+          return (
+            <KanbanColumn
+              key={column.id}
+              column={filteredColumn}
+              projectId={project.id}
+              onTaskClick={onTaskClick}
+              onRefresh={onRefresh}
+            />
+          );
+        })}
         <AddColumnButton projectId={project.id} onRefresh={onRefresh} />
       </div>
 
