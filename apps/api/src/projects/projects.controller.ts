@@ -63,6 +63,16 @@ export class ProjectsController {
     return this.projectsService.getProjectMembers(id);
   }
 
+  @Post('projects/:id/members')
+  addProjectMember(@Param('id') id: string, @Body('userId') userId: string) {
+    return this.projectsService.addProjectMember(id, userId);
+  }
+
+  @Delete('projects/:id/members/:userId')
+  removeProjectMember(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.projectsService.removeProjectMember(id, userId);
+  }
+
   @Put('projects/:id')
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return this.projectsService.update(id, dto);

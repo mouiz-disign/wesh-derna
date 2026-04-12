@@ -104,6 +104,21 @@ export class ProjectsService {
     });
   }
 
+  async addProjectMember(projectId: string, userId: string) {
+    return this.prisma.projectMember.upsert({
+      where: { userId_projectId: { userId, projectId } },
+      create: { userId, projectId, role: 'MEMBER' },
+      update: {},
+      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+    });
+  }
+
+  async removeProjectMember(projectId: string, userId: string) {
+    return this.prisma.projectMember.delete({
+      where: { userId_projectId: { userId, projectId } },
+    });
+  }
+
   async update(id: string, dto: UpdateProjectDto) {
     return this.prisma.project.update({
       where: { id },
