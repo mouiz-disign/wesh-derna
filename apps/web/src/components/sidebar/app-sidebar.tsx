@@ -41,7 +41,7 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
 import type { ProjectPreview, Channel } from "@repo/types";
 
-export function AppSidebar() {
+export function AppSidebar({ mobile }: { mobile?: boolean }) {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -88,7 +88,7 @@ export function AppSidebar() {
     .slice(0, 2);
 
   return (
-    <aside className="h-full w-64 fixed left-0 top-0 z-50 flex flex-col bg-[#1a1d2e] text-[#c8cad8]">
+    <aside className={`h-full flex flex-col bg-[#1a1d2e] text-[#c8cad8] ${mobile ? "w-full" : "w-64 fixed left-0 top-0 z-50"}`}>
       {/* Brand + Avatar */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
