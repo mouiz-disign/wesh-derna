@@ -227,7 +227,7 @@ export class WorkspacesService {
       update: {},
     });
 
-    // Ajouter au projet si l'invitation est liee a un projet
+    // Ajouter au projet ou a tous les projets du workspace
     if (invitation.projectId) {
       await this.prisma.projectMember.upsert({
         where: { userId_projectId: { userId: user.id, projectId: invitation.projectId } },
@@ -238,6 +238,23 @@ export class WorkspacesService {
         },
         update: {},
       });
+    } else {
+      // Pas de projet specifique -> ajouter a tous les projets du workspace
+      const projects = await this.prisma.project.findMany({
+        where: { workspaceId: invitation.workspaceId },
+        select: { id: true },
+      });
+      for (const project of projects) {
+        await this.prisma.projectMember.upsert({
+          where: { userId_projectId: { userId: user.id, projectId: project.id } },
+          create: {
+            projectId: project.id,
+            userId: user.id,
+            role: invitation.role,
+          },
+          update: {},
+        });
+      }
     }
 
     // Marquer l'invitation comme acceptee
