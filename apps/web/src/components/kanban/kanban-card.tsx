@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Calendar, GripVertical, CheckSquare } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Task } from "@repo/types";
@@ -122,6 +122,13 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
             >
               <Calendar className="h-3 w-3" />
               {format(new Date(task.deadline), "dd MMM", { locale: fr })}
+            </span>
+          )}
+
+          {/* Voice note indicator */}
+          {task.voiceNoteUrl && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]" title="Message vocal">
+              <Mic className="h-3 w-3" />
             </span>
           )}
 

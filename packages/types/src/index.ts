@@ -98,6 +98,7 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  voiceNoteUrl: string | null;
   priority: Priority;
   deadline: string | null;
   order: number;

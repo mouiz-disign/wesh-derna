@@ -1,6 +1,8 @@
 import {
   Controller, Post, Get, Put, Patch, Delete, Param, Body, UseGuards, Req,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -9,6 +11,8 @@ import { MoveTaskDto } from './dto/move-task.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 
 @ApiTags('Tasks')
 @ApiBearerAuth()
@@ -49,6 +53,40 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.addComment(id, dto.content, (req as any).user.id);
+  }
+
+  // Voice note upload
+  @Post(':id/voice-note')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads', 'voice-notes'),
+        filename: (_req, file, cb) => {
+          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname) || '.webm'}`;
+          cb(null, uniqueName);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+      fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith('audio/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Seuls les fichiers audio sont acceptes'), false);
+        }
+      },
+    }),
+  )
+  uploadVoiceNote(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const voiceNoteUrl = `/uploads/voice-notes/${file.filename}`;
+    return this.tasksService.setVoiceNote(id, voiceNoteUrl);
+  }
+
+  @Delete(':id/voice-note')
+  removeVoiceNote(@Param('id') id: string) {
+    return this.tasksService.setVoiceNote(id, null);
   }
 
   // Subtasks

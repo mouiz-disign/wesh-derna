@@ -18,12 +18,14 @@ import {
   ListChecks,
   Plus,
   X,
+  Mic,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Task, Comment, UserPreview } from "@repo/types";
+import { VoiceRecorder, VoicePlayer } from "@/components/tasks/voice-recorder";
 
 const priorityOptions = [
   { value: "LOW", label: "Basse", dot: "bg-slate-400", bg: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300" },
@@ -178,6 +180,42 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                   placeholder="Ajouter une description..."
                   className="w-full resize-none rounded-xl bg-[var(--surface-low)] px-4 py-3 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 border-none placeholder:text-[var(--muted-foreground)] leading-relaxed"
                 />
+
+                {/* Voice note */}
+                <div>
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-3 flex items-center gap-2">
+                    <Mic className="h-3.5 w-3.5" />
+                    Message vocal
+                  </h4>
+                  {task.voiceNoteUrl ? (
+                    <VoicePlayer
+                      src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}${task.voiceNoteUrl}`}
+                      onRemove={async () => {
+                        try {
+                          await api.delete(`/tasks/${taskId}/voice-note`);
+                          setTask((prev) => prev ? { ...prev, voiceNoteUrl: null } : null);
+                          onUpdated();
+                          toast.success("Vocal supprime");
+                        } catch { toast.error("Erreur"); }
+                      }}
+                    />
+                  ) : (
+                    <VoiceRecorder
+                      onRecorded={async (blob) => {
+                        try {
+                          const formData = new FormData();
+                          formData.append("file", blob, "voice-note.webm");
+                          const { data } = await api.post(`/tasks/${taskId}/voice-note`, formData, {
+                            headers: { "Content-Type": "multipart/form-data" },
+                          });
+                          setTask((prev) => prev ? { ...prev, voiceNoteUrl: data.voiceNoteUrl } : null);
+                          onUpdated();
+                          toast.success("Vocal enregistre");
+                        } catch { toast.error("Erreur upload"); }
+                      }}
+                    />
+                  )}
+                </div>
 
                 {/* Subtasks */}
                 <div>

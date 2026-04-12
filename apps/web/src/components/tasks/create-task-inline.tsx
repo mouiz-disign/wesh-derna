@@ -5,8 +5,9 @@ import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, X, Calendar, User, Flag, ChevronDown } from "lucide-react";
+import { Loader2, X, Calendar, User, Flag, ChevronDown, Mic } from "lucide-react";
 import type { UserPreview } from "@repo/types";
+import { VoiceRecorder, VoicePlayer } from "@/components/tasks/voice-recorder";
 
 const priorities = [
   { value: "LOW", label: "Basse", color: "bg-slate-400" },
@@ -31,6 +32,8 @@ export function CreateTaskInline({ columnId, projectId, onCreated, onCancel }: P
   const [members, setMembers] = useState<UserPreview[]>([]);
   const [loading, setLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -47,7 +50,7 @@ export function CreateTaskInline({ columnId, projectId, onCreated, onCancel }: P
     if (!title.trim()) return;
     setLoading(true);
     try {
-      await api.post("/tasks", {
+      const { data: task } = await api.post("/tasks", {
         title: title.trim(),
         columnId,
         projectId,
@@ -55,6 +58,17 @@ export function CreateTaskInline({ columnId, projectId, onCreated, onCancel }: P
         deadline: deadline || undefined,
         assigneeId: assigneeId || undefined,
       });
+
+      // Upload voice note if recorded
+      if (voiceBlob) {
+        const formData = new FormData();
+        formData.append("file", voiceBlob, "voice-note.webm");
+        await api.post(`/tasks/${task.id}/voice-note`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
       toast.success("Tache creee");
       onCreated();
     } catch {
@@ -124,6 +138,26 @@ export function CreateTaskInline({ columnId, projectId, onCreated, onCancel }: P
           />
         </div>
       </div>
+
+      {/* Voice note */}
+      {voicePreviewUrl ? (
+        <VoicePlayer
+          src={voicePreviewUrl}
+          onRemove={() => {
+            setVoiceBlob(null);
+            if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+            setVoicePreviewUrl(null);
+          }}
+        />
+      ) : (
+        <VoiceRecorder
+          onRecorded={(blob) => {
+            setVoiceBlob(blob);
+            setVoicePreviewUrl(URL.createObjectURL(blob));
+          }}
+          disabled={loading}
+        />
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">

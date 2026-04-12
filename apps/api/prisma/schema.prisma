@@ -120,16 +120,17 @@ model Column {
 }
 
 model Task {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  priority    Priority  @default(MEDIUM)
-  deadline    DateTime?
-  order       Int       @default(0)
-  columnId    String
-  projectId   String
-  assigneeId  String?
-  createdAt   DateTime  @default(now())
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  voiceNoteUrl String?
+  priority     Priority  @default(MEDIUM)
+  deadline     DateTime?
+  order        Int       @default(0)
+  columnId     String
+  projectId    String
+  assigneeId   String?
+  createdAt    DateTime  @default(now())
 
   column   Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)

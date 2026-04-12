@@ -151,6 +151,19 @@ export class TasksService {
     return comment;
   }
 
+  // ── Voice note ──
+
+  async setVoiceNote(id: string, voiceNoteUrl: string | null) {
+    return this.prisma.task.update({
+      where: { id },
+      data: { voiceNoteUrl },
+      include: {
+        assignee: { select: { id: true, name: true, avatar: true } },
+        tags: true,
+      },
+    });
+  }
+
   // ── Subtasks ──
 
   async addSubtask(taskId: string, title: string) {
