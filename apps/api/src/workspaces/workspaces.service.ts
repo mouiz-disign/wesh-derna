@@ -95,6 +95,53 @@ export class WorkspacesService {
     };
   }
 
+  async updateMemberRole(workspaceId: string, memberId: string, role: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { members: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace non trouve');
+
+    const admin = workspace.members.find((m) => m.userId === userId);
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new ForbiddenException('Seuls les admins peuvent modifier les roles');
+    }
+
+    const target = workspace.members.find((m) => m.id === memberId);
+    if (!target) throw new NotFoundException('Membre non trouve');
+    if (target.userId === userId) throw new ForbiddenException('Vous ne pouvez pas modifier votre propre role');
+
+    return this.prisma.workspaceMember.update({
+      where: { id: memberId },
+      data: { role: role as any },
+      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+    });
+  }
+
+  async removeMember(workspaceId: string, memberId: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { members: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace non trouve');
+
+    const admin = workspace.members.find((m) => m.userId === userId);
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new ForbiddenException('Seuls les admins peuvent supprimer des membres');
+    }
+
+    const target = workspace.members.find((m) => m.id === memberId);
+    if (!target) throw new NotFoundException('Membre non trouve');
+    if (target.userId === userId) throw new ForbiddenException('Vous ne pouvez pas vous supprimer vous-meme');
+
+    // Remove from all projects too
+    await this.prisma.projectMember.deleteMany({
+      where: { userId: target.userId, project: { workspaceId } },
+    });
+
+    return this.prisma.workspaceMember.delete({ where: { id: memberId } });
+  }
+
   async getInvitations(workspaceId: string) {
     return this.prisma.invitation.findMany({
       where: { workspaceId },
