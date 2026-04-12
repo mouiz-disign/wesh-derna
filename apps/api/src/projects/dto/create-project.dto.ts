@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateProjectDto {
@@ -16,4 +16,10 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @ApiPropertyOptional({ example: ['userId1', 'userId2'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  memberIds?: string[];
 }

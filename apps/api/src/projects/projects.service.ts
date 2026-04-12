@@ -25,7 +25,12 @@ export class ProjectsService {
           },
         },
         members: {
-          create: { userId, role: 'ADMIN' },
+          create: [
+            { userId, role: 'ADMIN' },
+            ...(dto.memberIds || [])
+              .filter((id) => id !== userId)
+              .map((id) => ({ userId: id, role: 'MEMBER' as const })),
+          ],
         },
       },
       include: { columns: { orderBy: { order: 'asc' } } },
