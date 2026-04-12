@@ -99,16 +99,17 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
             {workspace?.name || "Wesh Derna"}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-1.5 rounded-lg text-[#8b8da0] hover:text-white hover:bg-[#252839] transition-colors"
+            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           <div className="w-7 h-7 rounded-full bg-[#e85d3a] flex items-center justify-center text-[10px] font-bold text-white">
             {initials}
           </div>
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-1 rounded text-[#8b8da0] hover:text-white transition-colors"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
         </div>
       </div>
 

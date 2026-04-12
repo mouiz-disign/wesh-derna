@@ -7,7 +7,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
-import { Loader2, Menu } from "lucide-react";
+import { Loader2, Menu, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function WorkspaceLayout({
@@ -24,6 +25,7 @@ export default function WorkspaceLayout({
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   // Close mobile sidebar on navigation
   useEffect(() => {
@@ -83,9 +85,15 @@ export default function WorkspaceLayout({
             <AppSidebar mobile />
           </SheetContent>
         </Sheet>
-        <span className="text-sm font-bold text-white truncate">
+        <span className="text-sm font-bold text-white truncate flex-1">
           {currentWorkspace?.name || "Wesh Derna"}
         </span>
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="p-1.5 rounded-lg text-[#c8cad8] hover:bg-[#252839] transition-colors"
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
       </div>
 
       <main className="md:ml-64 h-screen overflow-auto pt-14 md:pt-0">{children}</main>
