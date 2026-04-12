@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Users, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Users, Building2, CheckCircle2, Eye, EyeOff, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
@@ -14,6 +14,129 @@ interface InvitationData {
   role: string;
   workspace: { id: string; name: string };
   project?: { id: string; name: string } | null;
+}
+
+const POSTES = [
+  "Directeur General",
+  "Directeur des Operations",
+  "Directeur Technique",
+  "Directeur Commercial",
+  "Directeur RH",
+  "Directeur Financier",
+  "Chef de Projet",
+  "Responsable d'equipe",
+  "Developpeur Full-Stack",
+  "Developpeur Frontend",
+  "Developpeur Backend",
+  "Designer UI/UX",
+  "Data Analyst",
+  "Comptable",
+  "Assistant(e) de direction",
+  "Charge(e) de communication",
+  "Commercial(e)",
+  "Consultant(e)",
+  "Stagiaire",
+  "Autre",
+];
+
+const FONCTIONS = [
+  "CEO / PDG",
+  "COO",
+  "CTO",
+  "CFO",
+  "CMO",
+  "DRH",
+  "Chef de projet",
+  "Scrum Master",
+  "Product Owner",
+  "Lead Developer",
+  "Manager",
+  "Coordinateur",
+  "Analyste",
+  "Superviseur",
+  "Collaborateur",
+  "Freelance",
+  "Autre",
+];
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full h-10 px-3 pr-8 rounded-lg bg-[var(--surface-low)] text-sm text-[var(--on-surface)] border-none outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-[var(--primary)]/30 transition-all"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  minLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  required?: boolean;
+  minLength?: number;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+        {label}
+      </label>
+      <div className="relative">
+        <Input
+          required={required}
+          type={show ? "text" : "password"}
+          minLength={minLength}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="bg-[var(--surface-low)] border-none pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--on-surface)] transition-colors"
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function InvitePage() {
@@ -191,62 +314,38 @@ export default function InvitePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                Poste
-              </label>
-              <Input
-                value={form.poste}
-                onChange={(e) => setForm({ ...form, poste: e.target.value })}
-                placeholder="Ex: Developpeur Full-Stack"
-                className="bg-[var(--surface-low)] border-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                Fonction
-              </label>
-              <Input
-                value={form.fonction}
-                onChange={(e) =>
-                  setForm({ ...form, fonction: e.target.value })
-                }
-                placeholder="Ex: CTO, Chef de projet"
-                className="bg-[var(--surface-low)] border-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Mot de passe *
-            </label>
-            <Input
-              required
-              type="password"
-              minLength={6}
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Minimum 6 caracteres"
-              className="bg-[var(--surface-low)] border-none"
+            <SelectField
+              label="Poste"
+              value={form.poste}
+              onChange={(val) => setForm({ ...form, poste: val })}
+              options={POSTES}
+              placeholder="Selectionnez..."
+            />
+            <SelectField
+              label="Fonction"
+              value={form.fonction}
+              onChange={(val) => setForm({ ...form, fonction: val })}
+              options={FONCTIONS}
+              placeholder="Selectionnez..."
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Confirmer le mot de passe *
-            </label>
-            <Input
-              required
-              type="password"
-              value={form.confirmPassword}
-              onChange={(e) =>
-                setForm({ ...form, confirmPassword: e.target.value })
-              }
-              placeholder="Retapez votre mot de passe"
-              className="bg-[var(--surface-low)] border-none"
-            />
-          </div>
+          <PasswordField
+            label="Mot de passe *"
+            value={form.password}
+            onChange={(val) => setForm({ ...form, password: val })}
+            placeholder="Minimum 6 caracteres"
+            required
+            minLength={6}
+          />
+
+          <PasswordField
+            label="Confirmer le mot de passe *"
+            value={form.confirmPassword}
+            onChange={(val) => setForm({ ...form, confirmPassword: val })}
+            placeholder="Retapez votre mot de passe"
+            required
+          />
 
           <button
             type="submit"
