@@ -104,7 +104,7 @@ export class WorkspacesService {
 
     return {
       invitation,
-      inviteLink: `${process.env.CORS_ORIGIN || 'http://localhost:7001'}/invite/${invitation.token}`,
+      token: invitation.token,
     };
   }
 

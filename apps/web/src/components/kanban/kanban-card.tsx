@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Calendar, GripVertical } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Task } from "@repo/types";
@@ -46,6 +46,10 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
   const isOverdue =
     task.deadline && new Date(task.deadline) < new Date();
 
+  const subtasksDone = task.subtasks?.filter((s) => s.done).length ?? 0;
+  const subtasksTotal = task.subtasks?.length ?? 0;
+  const subtaskProgress = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
+
   return (
     <div
       ref={setNodeRef}
@@ -77,6 +81,31 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
         <p className="text-xs text-[var(--muted-foreground)] mb-3 line-clamp-2 leading-relaxed">
           {task.description}
         </p>
+      )}
+
+      {/* Subtask progress */}
+      {subtasksTotal > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]">
+              <CheckSquare className="h-3 w-3" />
+              {subtasksDone}/{subtasksTotal}
+            </span>
+            <span className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+              {subtaskProgress}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-[var(--surface-high)] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                subtaskProgress === 100
+                  ? "bg-emerald-500"
+                  : "bg-[var(--primary)]"
+              }`}
+              style={{ width: `${subtaskProgress}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Footer */}

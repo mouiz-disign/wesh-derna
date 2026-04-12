@@ -64,8 +64,10 @@ export default function MembersPage() {
         `/workspaces/${params.workspaceId}/invite`,
         { email },
       );
-      toast.success("Invitation envoyee !");
-      setLastInviteLink(data.inviteLink);
+      const link = `${window.location.origin}/invite/${data.token}`;
+      setLastInviteLink(link);
+      await navigator.clipboard.writeText(link);
+      toast.success("Lien d'invitation copie !");
       setEmail("");
       // Refresh invitations
       const res = await api.get(`/workspaces/${params.workspaceId}/invitations`);
@@ -119,7 +121,14 @@ export default function MembersPage() {
             disabled={inviting || !email.trim()}
             className="px-5 py-2 gradient-primary text-white rounded-xl text-sm font-bold disabled:opacity-50 transition-all hover:shadow-lg"
           >
-            {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Envoyer l'invitation"}
+            {inviting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Link2 className="h-4 w-4 mr-1.5" />
+                Generer un lien d&apos;invitation
+              </>
+            )}
           </button>
         </form>
 

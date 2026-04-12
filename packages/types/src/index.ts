@@ -99,7 +99,8 @@ export interface Task {
   assignee: UserPreview | null;
   tags: Tag[];
   createdAt: string;
-  _count?: { comments: number };
+  subtasks?: { done: boolean }[];
+  _count?: { comments: number; subtasks?: number };
 }
 
 export interface CreateTaskPayload {

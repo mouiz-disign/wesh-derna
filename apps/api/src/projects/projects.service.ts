@@ -50,7 +50,8 @@ export class ProjectsService {
               include: {
                 assignee: { select: { id: true, name: true, avatar: true } },
                 tags: true,
-                _count: { select: { comments: true } },
+                _count: { select: { comments: true, subtasks: true } },
+                subtasks: { select: { done: true } },
               },
             },
           },
