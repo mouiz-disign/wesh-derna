@@ -53,10 +53,10 @@ export default function WorkspaceDashboard() {
   }
 
   return (
-    <div className="p-8 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 min-h-screen">
       {/* Hero Title */}
       <div className="mb-10">
-        <h1 className="text-[2.5rem] font-headline font-extrabold tracking-tight text-[var(--on-surface)] leading-none">
+        <h1 className="text-2xl sm:text-3xl md:text-[2.5rem] font-headline font-extrabold tracking-tight text-[var(--on-surface)] leading-none">
           Vue d&apos;ensemble
         </h1>
         <p className="text-[var(--secondary-foreground)] mt-2">
@@ -65,7 +65,7 @@ export default function WorkspaceDashboard() {
       </div>
 
       {/* Bento Grid */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-4 sm:gap-6">
         {/* Productivity Chart */}
         <div className="col-span-12 lg:col-span-8 bg-[var(--surface-low)] rounded-xl p-6 flex flex-col">
           <div className="flex justify-between items-center mb-8">

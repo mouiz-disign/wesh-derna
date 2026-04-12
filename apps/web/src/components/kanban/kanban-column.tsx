@@ -59,7 +59,7 @@ export function KanbanColumn({ column, projectId, onTaskClick, onRefresh }: Prop
   };
 
   return (
-    <div className="flex-shrink-0 w-80 flex flex-col">
+    <div className="flex-shrink-0 w-[270px] sm:w-80 flex flex-col">
       {/* Column header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">

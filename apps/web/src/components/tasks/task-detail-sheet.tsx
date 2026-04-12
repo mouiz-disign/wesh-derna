@@ -144,7 +144,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 border-0 shadow-2xl rounded-2xl">
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 border-0 shadow-2xl rounded-2xl max-h-[90vh] sm:max-h-[85vh]">
         {loading || !task ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-[var(--muted-foreground)]" />
@@ -160,7 +160,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
 
             <div className="flex flex-col lg:flex-row min-h-[400px]">
               {/* Left — Main content */}
-              <div className="flex-1 p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+              <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto max-h-[60vh] sm:max-h-[70vh]">
                 {/* Title */}
                 <input
                   value={title}
@@ -320,7 +320,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
               </div>
 
               {/* Right — Sidebar info */}
-              <div className="w-full lg:w-60 border-t lg:border-t-0 lg:border-l border-[var(--border)] bg-[var(--surface-low)] p-5 space-y-5">
+              <div className="w-full lg:w-60 border-t lg:border-t-0 lg:border-l border-[var(--border)] bg-[var(--surface-low)] p-4 sm:p-5 space-y-4 sm:space-y-5">
                 {/* Priority */}
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2 block">

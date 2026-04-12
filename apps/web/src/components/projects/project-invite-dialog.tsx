@@ -95,7 +95,7 @@ export function ProjectInviteDialog({ workspaceId, projectId, projectName, open,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-[var(--surface-lowest)] rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] flex flex-col"
+        className="bg-[var(--surface-lowest)] rounded-2xl w-[calc(100%-2rem)] max-w-md shadow-xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

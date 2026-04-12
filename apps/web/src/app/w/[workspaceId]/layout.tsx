@@ -81,7 +81,7 @@ export default function WorkspaceLayout({
           >
             <Menu className="h-5 w-5" />
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-72 bg-[#1a1d2e] border-none">
+          <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw] bg-[#1a1d2e] border-none">
             <AppSidebar mobile />
           </SheetContent>
         </Sheet>

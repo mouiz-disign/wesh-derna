@@ -118,7 +118,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId 
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full gap-6 p-6">
+      <div className="flex h-full gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 overflow-x-auto">
         {columns.map((column) => {
           const filteredColumn = filterAssigneeId
             ? { ...column, tasks: column.tasks.filter((t) => t.assigneeId === filterAssigneeId) }

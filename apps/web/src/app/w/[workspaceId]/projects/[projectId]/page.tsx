@@ -82,7 +82,7 @@ export default function ProjectPage() {
   return (
     <div className="flex h-full flex-col">
       {/* ═══ Top bar: Workspace > Project ═══ */}
-      <div className="px-6 pt-4 pb-0">
+      <div className="px-3 sm:px-6 pt-3 sm:pt-4 pb-0">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] mb-1">
           <span>{workspace?.name}</span>
@@ -91,25 +91,25 @@ export default function ProjectPage() {
         </div>
 
         {/* Project title row */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div
-              className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+              className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
               style={{ backgroundColor: project.color }}
             >
               {project.name.charAt(0).toUpperCase()}
             </div>
-            <h1 className="text-lg font-headline font-bold">{project.name}</h1>
-            <button className="p-1 text-[var(--muted-foreground)] hover:text-[var(--on-surface)] transition-colors">
+            <h1 className="text-base sm:text-lg font-headline font-bold truncate">{project.name}</h1>
+            <button className="p-1 text-[var(--muted-foreground)] hover:text-[var(--on-surface)] transition-colors hidden sm:block">
               <Info className="h-4 w-4" />
             </button>
-            <button className="p-1 text-[var(--muted-foreground)] hover:text-amber-500 transition-colors">
+            <button className="p-1 text-[var(--muted-foreground)] hover:text-amber-500 transition-colors hidden sm:block">
               <Star className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors">
               <Zap className="h-3.5 w-3.5" />
               Automatisation
             </button>
@@ -151,10 +151,10 @@ export default function ProjectPage() {
       </div>
 
       {/* ═══ Wrike-style tab bar ═══ */}
-      <div className="border-b border-[var(--border)] px-6">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-[var(--border)] px-3 sm:px-6">
+        <div className="flex items-center justify-between gap-2">
           {/* Left: View tabs */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 overflow-x-auto flex-nowrap scrollbar-none">
             <ViewTab
               icon={Table2}
               label="Tableau"
@@ -239,22 +239,22 @@ export default function ProjectPage() {
                 })}
               </div>
             </div>
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
+            <button className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <ArrowUpDown className="h-3.5 w-3.5" />
               Nom
             </button>
-            <div className="w-px h-5 bg-[var(--border)] mx-1" />
-            <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
+            <div className="hidden sm:block w-px h-5 bg-[var(--border)] mx-1" />
+            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <SlidersHorizontal className="h-3.5 w-3.5" />
             </button>
-            <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
+            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <Globe className="h-3.5 w-3.5" />
             </button>
-            <div className="w-px h-5 bg-[var(--border)] mx-1" />
-            <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
+            <div className="hidden md:block w-px h-5 bg-[var(--border)] mx-1" />
+            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <Undo2 className="h-3.5 w-3.5" />
             </button>
-            <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
+            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <Redo2 className="h-3.5 w-3.5" />
             </button>
             <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
