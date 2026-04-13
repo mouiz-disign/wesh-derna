@@ -173,6 +173,9 @@ export interface Message {
   authorId: string;
   author: UserPreview;
   reactions: Reaction[];
+  fileUrl: string | null;
+  fileName: string | null;
+  fileMimeType: string | null;
   createdAt: string;
 }
 

@@ -9,6 +9,7 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInput } from "@/components/chat/chat-input";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Message } from "@repo/types";
 
 export default function DMPage() {
@@ -144,6 +145,18 @@ export default function DMPage() {
       <ChatInput
         onSend={handleSend}
         onTyping={handleTyping}
+        onFileUpload={async (file, content) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("content", content);
+          formData.append("dmTo", otherUserId);
+          try {
+            const { data } = await api.post("/messages/upload", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            setMessages((prev) => [...prev, data]);
+          } catch { toast.error("Erreur upload"); }
+        }}
         placeholder={`Message ${otherName}...`}
       />
     </div>

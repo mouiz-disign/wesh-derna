@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Smile, Trash2 } from "lucide-react";
+import { Smile, Trash2, FileText, Download } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import type { Message, Reaction } from "@repo/types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const QUICK_EMOJIS = ["👍", "❤️", "🔥", "😂", "😢", "🎉", "👀", "🙏", "✅", "❌", "🚀", "💡", "🤔", "😍", "👏", "💯", "🙌", "😅", "🤝", "⭐"];
 
@@ -115,7 +117,8 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }
                 <span className="invisible group-hover:visible text-[10px] text-muted-foreground mr-2">
                   {format(new Date(msg.createdAt), "HH:mm")}
                 </span>
-                <span className="text-sm">{msg.content}</span>
+                {msg.content && <span className="text-sm">{msg.content}</span>}
+                <MessageFile msg={msg} />
               </>
             ) : (
               <>
@@ -131,7 +134,8 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }
                       {format(new Date(msg.createdAt), "dd MMM HH:mm", { locale: fr })}
                     </span>
                   </div>
-                  <p className="text-sm mt-0.5">{msg.content}</p>
+                  {msg.content && <p className="text-sm mt-0.5">{msg.content}</p>}
+                  <MessageFile msg={msg} />
                 </div>
               </>
             )}
@@ -163,5 +167,37 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }
       })}
       <div ref={bottomRef} />
     </div>
+  );
+}
+
+function MessageFile({ msg }: { msg: Message }) {
+  if (!msg.fileUrl) return null;
+  const fullUrl = `${API_URL}${msg.fileUrl}`;
+  const isImage = msg.fileMimeType?.startsWith("image/");
+
+  if (isImage) {
+    return (
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="block mt-1.5 max-w-xs">
+        <img src={fullUrl} alt={msg.fileName || "image"} className="rounded-lg border border-[var(--border)] max-h-60 object-contain" />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={fullUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 mt-1.5 p-2 rounded-lg bg-[var(--surface-low)] hover:bg-[var(--surface-high)] transition-colors max-w-xs"
+    >
+      <FileText className="h-5 w-5 text-[var(--muted-foreground)] shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium truncate">{msg.fileName}</p>
+        <p className="text-[10px] text-[var(--muted-foreground)]">
+          {msg.fileMimeType?.split("/")[1]?.toUpperCase() || "FICHIER"}
+        </p>
+      </div>
+      <Download className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+    </a>
   );
 }

@@ -208,13 +208,16 @@ model Channel {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  channelId String?
-  dmTo      String?
-  authorId  String
-  reactions Json     @default("[]")
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  content      String
+  channelId    String?
+  dmTo         String?
+  authorId     String
+  reactions    Json     @default("[]")
+  fileUrl      String?
+  fileName     String?
+  fileMimeType String?
+  createdAt    DateTime @default(now())
 
   author  User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   channel Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)

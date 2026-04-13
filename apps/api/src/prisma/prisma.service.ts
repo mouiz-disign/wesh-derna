@@ -51,6 +51,9 @@ export class PrismaService
           UNIQUE("userId", "otherUserId")
         );
       `);
+      await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;`);
+      await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
+      await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileMimeType" TEXT;`);
       this.logger.log('Database migrations checked');
     } catch (err) {
       this.logger.warn('Migration check failed (non-critical): ' + err);

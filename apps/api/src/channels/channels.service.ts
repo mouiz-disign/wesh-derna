@@ -90,6 +90,31 @@ export class ChannelsService {
     return messages.reverse();
   }
 
+  // ── File message ──
+
+  async sendMessageWithFile(
+    authorId: string,
+    content: string,
+    channelId: string | null,
+    dmTo: string | null,
+    file: { fileUrl: string; fileName: string; fileMimeType: string },
+  ) {
+    return this.prisma.message.create({
+      data: {
+        content,
+        channelId,
+        dmTo,
+        authorId,
+        fileUrl: file.fileUrl,
+        fileName: file.fileName,
+        fileMimeType: file.fileMimeType,
+      },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+  }
+
   // ── Reactions ──
 
   async toggleReaction(messageId: string, userId: string, emoji: string) {

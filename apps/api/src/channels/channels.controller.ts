@@ -1,12 +1,16 @@
 import {
   Controller, Post, Get, Delete, Param, Body, Query, UseGuards, Req,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ChannelsService } from './channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 
 @ApiTags('Channels')
 @ApiBearerAuth()
@@ -102,5 +106,37 @@ export class ChannelsController {
   @Delete('messages/:messageId')
   deleteMessage(@Param('messageId') messageId: string, @Req() req: Request) {
     return this.channelsService.deleteMessage(messageId, (req as any).user.id);
+  }
+
+  // Upload file in message
+  @Post('messages/upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads', 'chat'),
+        filename: (_req, file, cb) => {
+          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
+          cb(null, uniqueName);
+        },
+      }),
+      limits: { fileSize: 25 * 1024 * 1024 },
+    }),
+  )
+  uploadChatFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { content?: string; channelId?: string; dmTo?: string },
+    @Req() req: Request,
+  ) {
+    return this.channelsService.sendMessageWithFile(
+      (req as any).user.id,
+      body.content || '',
+      body.channelId || null,
+      body.dmTo || null,
+      {
+        fileUrl: `/uploads/chat/${file.filename}`,
+        fileName: file.originalname,
+        fileMimeType: file.mimetype,
+      },
+    );
   }
 }

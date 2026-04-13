@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInput } from "@/components/chat/chat-input";
 import { Hash, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Message, Channel } from "@repo/types";
 
 export default function ChannelPage() {
@@ -122,6 +123,21 @@ export default function ChannelPage() {
       <ChatInput
         onSend={handleSend}
         onTyping={handleTyping}
+        onFileUpload={async (file, content) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("content", content);
+          formData.append("channelId", channelId);
+          try {
+            const { data } = await api.post("/messages/upload", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            // Broadcast via socket
+            const socket = getSocket();
+            socket.emit("join:channel", { channelId });
+            setMessages((prev) => [...prev, data]);
+          } catch { toast.error("Erreur upload"); }
+        }}
         placeholder={`Message #${channel?.name || "channel"}...`}
       />
     </div>
