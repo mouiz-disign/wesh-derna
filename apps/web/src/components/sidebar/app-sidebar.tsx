@@ -12,7 +12,6 @@ import {
   Hash,
   Sun,
   Moon,
-  BarChart3,
   FileText,
   MessageSquare,
   Users,
@@ -22,9 +21,6 @@ import {
   Layout,
   Folder,
   Settings,
-  HelpCircle,
-  Archive,
-  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";

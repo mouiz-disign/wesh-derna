@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -33,15 +33,19 @@ interface Props {
 export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId }: Props) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [columns, setColumns] = useState<Column[]>(project.columns);
+  const prevProjectIdRef = useRef(project.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // Update columns when project changes
-  if (project.columns !== columns && !activeTask) {
-    setColumns(project.columns);
-  }
+  // Sync columns when project data changes (but not during drag)
+  useEffect(() => {
+    if (!activeTask) {
+      setColumns(project.columns);
+    }
+    prevProjectIdRef.current = project.id;
+  }, [project.columns, project.id, activeTask]);
 
   const allTasks = columns.flatMap((col) => col.tasks);
 

@@ -9,7 +9,6 @@ import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import {
   Loader2,
-  Search,
   Filter,
   Share2,
   Plus,
@@ -20,15 +19,8 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
-  SlidersHorizontal,
   ArrowUpDown,
-  Undo2,
-  Redo2,
   MoreHorizontal,
-  Globe,
-  Info,
-  Star,
-  Zap,
 } from "lucide-react";
 import { ProjectInviteDialog } from "@/components/projects/project-invite-dialog";
 import type { Project, WorkspaceMember, ProjectMember } from "@repo/types";
@@ -100,19 +92,9 @@ export default function ProjectPage() {
               {project.name.charAt(0).toUpperCase()}
             </div>
             <h1 className="text-base sm:text-lg font-headline font-bold truncate">{project.name}</h1>
-            <button className="p-1 text-[var(--muted-foreground)] hover:text-[var(--on-surface)] transition-colors hidden sm:block">
-              <Info className="h-4 w-4" />
-            </button>
-            <button className="p-1 text-[var(--muted-foreground)] hover:text-amber-500 transition-colors hidden sm:block">
-              <Star className="h-4 w-4" />
-            </button>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors">
-              <Zap className="h-3.5 w-3.5" />
-              Automatisation
-            </button>
             <button
               onClick={() => setShowInviteDialog(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-lg transition-colors"
@@ -242,20 +224,6 @@ export default function ProjectPage() {
             <button className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <ArrowUpDown className="h-3.5 w-3.5" />
               Nom
-            </button>
-            <div className="hidden sm:block w-px h-5 bg-[var(--border)] mx-1" />
-            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-            </button>
-            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
-              <Globe className="h-3.5 w-3.5" />
-            </button>
-            <div className="hidden md:block w-px h-5 bg-[var(--border)] mx-1" />
-            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
-              <Undo2 className="h-3.5 w-3.5" />
-            </button>
-            <button className="hidden md:block p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
-              <Redo2 className="h-3.5 w-3.5" />
             </button>
             <button className="p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--surface-low)] rounded-md transition-colors">
               <MoreHorizontal className="h-3.5 w-3.5" />

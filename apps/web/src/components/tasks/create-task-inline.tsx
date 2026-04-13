@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, X, Calendar, User, Flag, ChevronDown, Mic } from "lucide-react";
+import { Loader2, X, Calendar } from "lucide-react";
 import type { UserPreview } from "@repo/types";
 import { VoiceRecorder, VoicePlayer } from "@/components/tasks/voice-recorder";
 
@@ -31,7 +31,6 @@ export function CreateTaskInline({ columnId, projectId, onCreated, onCancel }: P
   const [assigneeId, setAssigneeId] = useState("");
   const [members, setMembers] = useState<UserPreview[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
 
