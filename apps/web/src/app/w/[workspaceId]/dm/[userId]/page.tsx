@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInput } from "@/components/chat/chat-input";
+import { ThreadPanel } from "@/components/chat/thread-panel";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Message } from "@repo/types";
@@ -19,6 +20,7 @@ export default function DMPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [threadMessage, setThreadMessage] = useState<Message | null>(null);
   const typingTimeout = useRef<Record<string, NodeJS.Timeout>>({});
 
   const otherUserId = params.userId as string;
@@ -88,11 +90,18 @@ export default function DMPage() {
       setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
     });
 
+    socket.on("thread:updated", (data: { parentId: string; replyCount: number }) => {
+      setMessages((prev) =>
+        prev.map((m) => m.id === data.parentId ? { ...m, _count: { ...m._count, replies: data.replyCount } } : m),
+      );
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:dm:typing");
       socket.off("message:reacted");
       socket.off("message:deleted");
+      socket.off("thread:updated");
     };
   }, [otherUserId, currentUser?.id]);
 
@@ -118,21 +127,23 @@ export default function DMPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b px-6 py-3">
-        <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[11px] font-bold text-white">
-          {otherInitials}
+    <div className="flex h-full">
+      <div className="flex flex-1 flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b px-6 py-3">
+          <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[11px] font-bold text-white">
+            {otherInitials}
+          </div>
+          <h2 className="font-semibold">{otherName}</h2>
         </div>
-        <h2 className="font-semibold">{otherName}</h2>
-      </div>
 
-      {/* Messages */}
-      <ChatMessageList
-        messages={messages}
-        currentUserId={currentUser?.id || ""}
-        dmUserId={otherUserId}
-      />
+        {/* Messages */}
+        <ChatMessageList
+          messages={messages}
+          currentUserId={currentUser?.id || ""}
+          dmUserId={otherUserId}
+          onOpenThread={(msg) => setThreadMessage(msg)}
+        />
 
       {/* Typing */}
       {typingUsers.length > 0 && (
@@ -159,6 +170,16 @@ export default function DMPage() {
         }}
         placeholder={`Message ${otherName}...`}
       />
+      </div>
+
+      {threadMessage && (
+        <ThreadPanel
+          parentMessage={threadMessage}
+          dmUserId={otherUserId}
+          currentUserId={currentUser?.id || ""}
+          onClose={() => setThreadMessage(null)}
+        />
+      )}
     </div>
   );
 }

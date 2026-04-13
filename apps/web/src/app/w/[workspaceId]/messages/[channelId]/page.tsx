@@ -7,6 +7,7 @@ import { getSocket, connectSocket } from "@/lib/socket";
 import { useAuthStore } from "@/stores/auth-store";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInput } from "@/components/chat/chat-input";
+import { ThreadPanel } from "@/components/chat/thread-panel";
 import { Hash, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Message, Channel } from "@repo/types";
@@ -18,6 +19,7 @@ export default function ChannelPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [threadMessage, setThreadMessage] = useState<Message | null>(null);
   const typingTimeout = useRef<Record<string, NodeJS.Timeout>>({});
 
   const channelId = params.channelId as string;
@@ -73,12 +75,19 @@ export default function ChannelPage() {
       setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
     });
 
+    socket.on("thread:updated", (data: { parentId: string; replyCount: number }) => {
+      setMessages((prev) =>
+        prev.map((m) => m.id === data.parentId ? { ...m, _count: { ...m._count, replies: data.replyCount } } : m),
+      );
+    });
+
     return () => {
       socket.emit("leave:channel", { channelId });
       socket.off("message:new");
       socket.off("message:typing");
       socket.off("message:reacted");
       socket.off("message:deleted");
+      socket.off("thread:updated");
     };
   }, [channelId, user?.id]);
 
@@ -101,17 +110,19 @@ export default function ChannelPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b px-6 py-3">
-        <Hash className="h-5 w-5 text-muted-foreground" />
-        <h2 className="font-semibold">{channel?.name || "Channel"}</h2>
-      </div>
+    <div className="flex h-full">
+      <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex items-center gap-2 border-b px-6 py-3">
+          <Hash className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">{channel?.name || "Channel"}</h2>
+        </div>
 
-      <ChatMessageList
-        messages={messages}
-        currentUserId={user?.id || ""}
-        channelId={channelId}
-      />
+        <ChatMessageList
+          messages={messages}
+          currentUserId={user?.id || ""}
+          channelId={channelId}
+          onOpenThread={(msg) => setThreadMessage(msg)}
+        />
 
       {typingUsers.length > 0 && (
         <div className="px-6 py-1 text-xs text-muted-foreground animate-pulse">
@@ -140,6 +151,17 @@ export default function ChannelPage() {
         }}
         placeholder={`Message #${channel?.name || "channel"}...`}
       />
+      </div>
+
+      {/* Thread panel */}
+      {threadMessage && (
+        <ThreadPanel
+          parentMessage={threadMessage}
+          channelId={channelId}
+          currentUserId={user?.id || ""}
+          onClose={() => setThreadMessage(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Smile, Trash2, FileText, Download } from "lucide-react";
+import { Smile, Trash2, FileText, Download, Reply } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import type { Message, Reaction } from "@repo/types";
 
@@ -17,9 +17,10 @@ interface Props {
   currentUserId: string;
   channelId?: string;
   dmUserId?: string;
+  onOpenThread?: (message: Message) => void;
 }
 
-export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }: Props) {
+export function ChatMessageList({ messages, currentUserId, channelId, dmUserId, onOpenThread }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
 
@@ -83,6 +84,15 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }
               >
                 <Smile className="h-3.5 w-3.5" />
               </button>
+              {onOpenThread && (
+                <button
+                  onClick={() => onOpenThread(msg)}
+                  className="p-1 rounded hover:bg-[var(--surface-high)] transition-colors text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+                  title="Repondre dans le thread"
+                >
+                  <Reply className="h-3.5 w-3.5" />
+                </button>
+              )}
               {isMe && (
                 <button
                   onClick={() => handleDelete(msg.id)}
@@ -161,6 +171,17 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId }
                   );
                 })}
               </div>
+            )}
+
+            {/* Thread badge */}
+            {(msg._count?.replies ?? 0) > 0 && onOpenThread && (
+              <button
+                onClick={() => onOpenThread(msg)}
+                className={`flex items-center gap-1.5 mt-1 text-[11px] font-medium text-[var(--primary)] hover:underline ${isConsecutive ? "" : "pl-11"}`}
+              >
+                <Reply className="h-3 w-3" />
+                {msg._count!.replies} reponse{msg._count!.replies > 1 ? "s" : ""}
+              </button>
             )}
           </div>
         );

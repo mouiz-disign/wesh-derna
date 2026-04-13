@@ -213,6 +213,7 @@ model Message {
   channelId    String?
   dmTo         String?
   authorId     String
+  parentId     String?
   reactions    Json     @default("[]")
   fileUrl      String?
   fileName     String?
@@ -221,6 +222,8 @@ model Message {
 
   author  User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   channel Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  parent  Message? @relation("ThreadReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Message[] @relation("ThreadReplies")
 
   @@map("messages")
 }

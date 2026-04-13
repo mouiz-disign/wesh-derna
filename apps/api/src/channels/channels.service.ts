@@ -31,12 +31,13 @@ export class ChannelsService {
 
   async getMessages(channelId: string, cursor?: string, limit = 50) {
     const messages = await this.prisma.message.findMany({
-      where: { channelId },
+      where: { channelId, parentId: null },
       take: limit,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: { createdAt: 'desc' },
       include: {
         author: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { replies: true } },
       },
     });
     return messages.reverse();
@@ -75,6 +76,7 @@ export class ChannelsService {
     const messages = await this.prisma.message.findMany({
       where: {
         channelId: null,
+        parentId: null,
         OR: [
           { authorId: userId, dmTo: otherUserId },
           { authorId: otherUserId, dmTo: userId },
@@ -85,9 +87,44 @@ export class ChannelsService {
       orderBy: { createdAt: 'desc' },
       include: {
         author: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { replies: true } },
       },
     });
     return messages.reverse();
+  }
+
+  // ── Threads ──
+
+  async getThreadReplies(parentId: string) {
+    return this.prisma.message.findMany({
+      where: { parentId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+  }
+
+  async sendReply(parentId: string, content: string, authorId: string) {
+    const parent = await this.prisma.message.findUnique({ where: { id: parentId } });
+    if (!parent) throw new NotFoundException('Message parent non trouvé');
+
+    const reply = await this.prisma.message.create({
+      data: {
+        content,
+        authorId,
+        parentId,
+        channelId: parent.channelId,
+        dmTo: parent.dmTo,
+      },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    const replyCount = await this.prisma.message.count({ where: { parentId } });
+
+    return { reply, replyCount };
   }
 
   // ── File message ──

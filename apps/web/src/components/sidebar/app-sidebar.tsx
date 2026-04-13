@@ -21,6 +21,7 @@ import {
   Folder,
   Settings,
   ClipboardList,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -173,6 +174,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
         <NavItem href={`/w/${params.workspaceId}/notifications`} icon={Bell} label="Boite de reception" active={pathname.includes("/notifications")} badge={unreadNotifs} />
         <NavItem href={`/w/${params.workspaceId}/messages`} icon={MessageSquare} label="Messages" active={pathname.includes("/messages") && !pathname.includes("/dm/")} />
         <NavItem href={`/w/${params.workspaceId}/my-tasks`} icon={ClipboardList} label="Mes taches" active={pathname.includes("/my-tasks")} />
+        <NavItem href={`/w/${params.workspaceId}/calendar`} icon={Calendar} label="Calendrier" active={pathname.includes("/calendar")} />
       </div>
 
       <div className="h-px bg-[#2d3044] mx-3 mb-2" />

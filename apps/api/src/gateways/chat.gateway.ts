@@ -171,6 +171,31 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(`dm:${dmRoom}`);
   }
 
+  // ── Threads ──
+
+  @SubscribeMessage('message:reply')
+  async handleReply(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { parentId: string; content: string; channelId?: string; dmUserId?: string },
+  ) {
+    const connUser = this.connectedUsers.get(client.id);
+    if (!connUser) return;
+
+    const { reply, replyCount } = await this.channelsService.sendReply(data.parentId, data.content, connUser.userId);
+
+    const replyPayload = { message: reply, parentId: data.parentId };
+    const threadPayload = { parentId: data.parentId, replyCount };
+
+    if (data.channelId) {
+      this.server.to(`channel:${data.channelId}`).emit('message:reply:new', replyPayload);
+      this.server.to(`channel:${data.channelId}`).emit('thread:updated', threadPayload);
+    } else if (data.dmUserId) {
+      const dmRoom = [connUser.userId, data.dmUserId].sort().join(':');
+      this.server.to(`dm:${dmRoom}`).emit('message:reply:new', replyPayload);
+      this.server.to(`dm:${dmRoom}`).emit('thread:updated', threadPayload);
+    }
+  }
+
   @SubscribeMessage('message:dm:typing')
   handleDMTyping(
     @ConnectedSocket() client: Socket,

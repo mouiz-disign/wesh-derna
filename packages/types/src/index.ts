@@ -172,11 +172,13 @@ export interface Message {
   dmTo: string | null;
   authorId: string;
   author: UserPreview;
+  parentId: string | null;
   reactions: Reaction[];
   fileUrl: string | null;
   fileName: string | null;
   fileMimeType: string | null;
   createdAt: string;
+  _count?: { replies: number };
 }
 
 export interface Reaction {

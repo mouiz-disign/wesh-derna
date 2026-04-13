@@ -92,6 +92,21 @@ export class ChannelsController {
     return this.channelsService.getUnreadCounts((req as any).user.id, workspaceId);
   }
 
+  // Threads
+  @Get('messages/:messageId/replies')
+  getThreadReplies(@Param('messageId') messageId: string) {
+    return this.channelsService.getThreadReplies(messageId);
+  }
+
+  @Post('messages/:messageId/replies')
+  async sendReply(
+    @Param('messageId') messageId: string,
+    @Body() dto: SendMessageDto,
+    @Req() req: Request,
+  ) {
+    return this.channelsService.sendReply(messageId, dto.content, (req as any).user.id);
+  }
+
   // Reactions
   @Post('messages/:messageId/reactions')
   toggleReaction(
