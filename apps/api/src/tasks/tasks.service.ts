@@ -16,6 +16,21 @@ export class TasksService {
     private automations: AutomationsService,
   ) {}
 
+  async getMyTasks(userId: string) {
+    return this.prisma.task.findMany({
+      where: { assigneeId: userId },
+      include: {
+        assignee: { select: { id: true, name: true, avatar: true } },
+        tags: true,
+        column: { select: { id: true, name: true, color: true } },
+        project: { select: { id: true, name: true, color: true, workspaceId: true } },
+        subtasks: { select: { done: true } },
+        _count: { select: { comments: true, subtasks: true, attachments: true } },
+      },
+      orderBy: [{ deadline: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+  }
+
   async create(dto: CreateTaskDto) {
     const maxOrder = await this.prisma.task.aggregate({
       where: { columnId: dto.columnId },

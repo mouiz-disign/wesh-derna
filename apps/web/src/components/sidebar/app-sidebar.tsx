@@ -21,6 +21,7 @@ import {
   Layout,
   Folder,
   Settings,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -134,10 +135,10 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
           active={pathname.includes("/messages")}
         />
         <NavItem
-          href={`/w/${params.workspaceId}/pages`}
-          icon={FileText}
-          label="Pages"
-          active={pathname.includes("/pages")}
+          href={`/w/${params.workspaceId}/my-tasks`}
+          icon={ClipboardList}
+          label="Mes taches"
+          active={pathname.includes("/my-tasks")}
         />
         <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#8b8da0] hover:bg-[#252839] rounded-lg transition-colors">
           <MoreHorizontal className="h-4 w-4" />

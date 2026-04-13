@@ -21,6 +21,11 @@ import { extname, join } from 'path';
 export class TasksController {
   constructor(private tasksService: TasksService) {}
 
+  @Get('mine')
+  getMyTasks(@Req() req: Request) {
+    return this.tasksService.getMyTasks((req as any).user.id);
+  }
+
   @Post()
   create(@Body() dto: CreateTaskDto) {
     return this.tasksService.create(dto);
