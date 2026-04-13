@@ -59,8 +59,11 @@ export default function DMPage() {
           (data.message.authorId === otherUserId && data.message.dmTo === currentUser?.id);
         if (isOurDM) {
           setMessages((prev) => [...prev, data.message]);
-          // Mark as read since we're viewing
           api.post(`/dm/${otherUserId}/read`).catch(() => {});
+          // Mark read receipt
+          if (data.message.authorId !== currentUser?.id) {
+            socket.emit("message:mark-read", { messageIds: [data.message.id], dmUserId: otherUserId });
+          }
         }
       }
     });
@@ -96,14 +99,38 @@ export default function DMPage() {
       );
     });
 
+    socket.on("message:read", (data: { messageIds: string[]; userId: string }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          data.messageIds.includes(m.id)
+            ? { ...m, readBy: [...((m.readBy as string[]) || []), data.userId] }
+            : m,
+        ),
+      );
+    });
+
     return () => {
       socket.off("message:new");
       socket.off("message:dm:typing");
       socket.off("message:reacted");
       socket.off("message:deleted");
       socket.off("thread:updated");
+      socket.off("message:read");
     };
   }, [otherUserId, currentUser?.id]);
+
+  // Mark existing messages as read on load
+  useEffect(() => {
+    if (messages.length > 0 && currentUser?.id) {
+      const unreadIds = messages
+        .filter((m) => m.authorId !== currentUser.id && !((m.readBy as string[]) || []).includes(currentUser.id))
+        .map((m) => m.id);
+      if (unreadIds.length > 0) {
+        const socket = getSocket();
+        socket.emit("message:mark-read", { messageIds: unreadIds, dmUserId: otherUserId });
+      }
+    }
+  }, [messages.length, otherUserId, currentUser?.id]);
 
   const handleSend = useCallback(
     (content: string) => {

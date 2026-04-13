@@ -171,6 +171,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(`dm:${dmRoom}`);
   }
 
+  // ── Read receipts ──
+
+  @SubscribeMessage('message:mark-read')
+  async handleMarkRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { messageIds: string[]; channelId?: string; dmUserId?: string },
+  ) {
+    const connUser = this.connectedUsers.get(client.id);
+    if (!connUser) return;
+
+    const updatedIds = await this.channelsService.markMessagesAsRead(connUser.userId, data.messageIds);
+
+    if (updatedIds.length > 0) {
+      const payload = { messageIds: updatedIds, userId: connUser.userId };
+      if (data.channelId) {
+        this.server.to(`channel:${data.channelId}`).emit('message:read', payload);
+      } else if (data.dmUserId) {
+        const dmRoom = [connUser.userId, data.dmUserId].sort().join(':');
+        this.server.to(`dm:${dmRoom}`).emit('message:read', payload);
+      }
+    }
+  }
+
   // ── Threads ──
 
   @SubscribeMessage('message:reply')

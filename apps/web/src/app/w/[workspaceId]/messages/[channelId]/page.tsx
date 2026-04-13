@@ -52,7 +52,21 @@ export default function ChannelPage() {
       if (data.message.channelId === channelId) {
         setMessages((prev) => [...prev, data.message]);
         api.post(`/channels/${channelId}/read`).catch(() => {});
+        // Mark as read immediately
+        if (data.message.authorId !== user?.id) {
+          socket.emit("message:mark-read", { messageIds: [data.message.id], channelId });
+        }
       }
+    });
+
+    socket.on("message:read", (data: { messageIds: string[]; userId: string }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          data.messageIds.includes(m.id)
+            ? { ...m, readBy: [...((m.readBy as string[]) || []), data.userId] }
+            : m,
+        ),
+      );
     });
 
     socket.on("message:typing", (data: { channelId: string; userName: string; userId: string }) => {
@@ -88,8 +102,20 @@ export default function ChannelPage() {
       socket.off("message:reacted");
       socket.off("message:deleted");
       socket.off("thread:updated");
+      socket.off("message:read");
     };
   }, [channelId, user?.id]);
+
+  // Mark existing messages as read on load
+  useEffect(() => {
+    if (messages.length > 0 && user?.id) {
+      const unreadIds = messages.filter((m) => m.authorId !== user.id && !((m.readBy as string[]) || []).includes(user.id)).map((m) => m.id);
+      if (unreadIds.length > 0) {
+        const socket = getSocket();
+        socket.emit("message:mark-read", { messageIds: unreadIds, channelId });
+      }
+    }
+  }, [messages.length, channelId, user?.id]);
 
   const handleSend = useCallback((content: string) => {
     const socket = getSocket();

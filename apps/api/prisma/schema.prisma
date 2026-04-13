@@ -215,6 +215,7 @@ model Message {
   authorId     String
   parentId     String?
   reactions    Json     @default("[]")
+  readBy       Json     @default("[]")
   fileUrl      String?
   fileName     String?
   fileMimeType String?

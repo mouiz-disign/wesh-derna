@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Smile, Trash2, FileText, Download, Reply } from "lucide-react";
+import { Smile, Trash2, FileText, Download, Reply, Check, CheckCheck } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import type { Message, Reaction } from "@repo/types";
 
@@ -72,6 +72,7 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId, 
 
         const isMe = msg.authorId === currentUserId;
         const reactions: Reaction[] = (msg.reactions as Reaction[]) || [];
+        const readBy: string[] = (msg.readBy as string[]) || [];
 
         return (
           <div key={msg.id} className={`group relative ${isConsecutive ? "pl-10 py-0.5" : `flex gap-3 py-2 ${i > 0 ? "mt-2" : ""}`} hover:bg-muted/30 rounded-md`}>
@@ -128,6 +129,7 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId, 
                   {format(new Date(msg.createdAt), "HH:mm")}
                 </span>
                 {msg.content && <span className="text-sm">{msg.content}</span>}
+                {isMe && <ReadIndicator readBy={readBy} isDM={!!dmUserId} />}
                 <MessageFile msg={msg} />
               </>
             ) : (
@@ -143,6 +145,7 @@ export function ChatMessageList({ messages, currentUserId, channelId, dmUserId, 
                     <span className="text-[11px] text-muted-foreground">
                       {format(new Date(msg.createdAt), "dd MMM HH:mm", { locale: fr })}
                     </span>
+                    {isMe && <ReadIndicator readBy={readBy} isDM={!!dmUserId} />}
                   </div>
                   {msg.content && <p className="text-sm mt-0.5">{msg.content}</p>}
                   <MessageFile msg={msg} />
@@ -221,4 +224,22 @@ function MessageFile({ msg }: { msg: Message }) {
       <Download className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
     </a>
   );
+}
+
+function ReadIndicator({ readBy, isDM }: { readBy: string[]; isDM: boolean }) {
+  if (isDM) {
+    if (readBy.length > 0) {
+      return <span className="shrink-0 ml-1" title="Lu"><CheckCheck className="h-3.5 w-3.5 text-blue-500" /></span>;
+    }
+    return <span className="shrink-0 ml-1" title="Envoye"><Check className="h-3.5 w-3.5 text-[var(--muted-foreground)]" /></span>;
+  }
+
+  if (readBy.length > 0) {
+    return (
+      <span className="shrink-0 ml-1" title={`Vu par ${readBy.length} personne${readBy.length > 1 ? "s" : ""}`}>
+        <CheckCheck className="h-3 w-3 inline text-blue-500" />
+      </span>
+    );
+  }
+  return null;
 }

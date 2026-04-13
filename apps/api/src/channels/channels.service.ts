@@ -93,6 +93,37 @@ export class ChannelsService {
     return messages.reverse();
   }
 
+  // ── Read receipts ──
+
+  async markMessagesAsRead(userId: string, messageIds: string[]) {
+    const messages = await this.prisma.message.findMany({
+      where: { id: { in: messageIds }, authorId: { not: userId } },
+      select: { id: true, readBy: true },
+    });
+
+    const updates = [];
+    const updatedIds: string[] = [];
+
+    for (const msg of messages) {
+      const readBy = (msg.readBy as unknown as string[]) || [];
+      if (!readBy.includes(userId)) {
+        updates.push(
+          this.prisma.message.update({
+            where: { id: msg.id },
+            data: { readBy: [...readBy, userId] as any },
+          }),
+        );
+        updatedIds.push(msg.id);
+      }
+    }
+
+    if (updates.length > 0) {
+      await this.prisma.$transaction(updates);
+    }
+
+    return updatedIds;
+  }
+
   // ── Threads ──
 
   async getThreadReplies(parentId: string) {

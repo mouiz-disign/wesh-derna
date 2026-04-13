@@ -174,6 +174,7 @@ export interface Message {
   author: UserPreview;
   parentId: string | null;
   reactions: Reaction[];
+  readBy: string[];
   fileUrl: string | null;
   fileName: string | null;
   fileMimeType: string | null;
