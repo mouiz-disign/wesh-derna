@@ -24,8 +24,9 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Task, Comment, UserPreview } from "@repo/types";
+import type { Task, Comment, UserPreview, Attachment } from "@repo/types";
 import { VoiceRecorder, VoicePlayer } from "@/components/tasks/voice-recorder";
+import { AttachmentList } from "@/components/tasks/attachment-list";
 
 const priorityOptions = [
   { value: "LOW", label: "Basse", dot: "bg-slate-400", bg: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300" },
@@ -53,6 +54,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
   const [subtasks, setSubtasks] = useState<{ id: string; title: string; done: boolean }[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   useEffect(() => {
     if (!taskId || !open) return;
@@ -67,6 +69,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
         setDescription(taskRes.data.description || "");
         setMembers(wsRes.data.members?.map((m: any) => m.user) || []);
         setSubtasks(taskRes.data.subtasks || []);
+        setAttachments(taskRes.data.attachments || []);
       })
       .catch(() => toast.error("Erreur chargement"))
       .finally(() => setLoading(false));
@@ -310,6 +313,17 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     </div>
                   )}
                 </div>
+
+                {/* Attachments */}
+                <AttachmentList
+                  taskId={taskId!}
+                  attachments={attachments}
+                  onChanged={async () => {
+                    const { data } = await api.get(`/tasks/${taskId}`);
+                    setAttachments(data.attachments || []);
+                    onUpdated();
+                  }}
+                />
 
                 {/* Comments */}
                 <div>

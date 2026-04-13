@@ -109,7 +109,8 @@ export interface Task {
   tags: Tag[];
   createdAt: string;
   subtasks?: { done: boolean }[];
-  _count?: { comments: number; subtasks?: number };
+  attachments?: Attachment[];
+  _count?: { comments: number; subtasks?: number; attachments?: number };
 }
 
 export interface CreateTaskPayload {
@@ -132,6 +133,17 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+}
+
+// Attachment
+export interface Attachment {
+  id: string;
+  filename: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  taskId: string;
+  createdAt: string;
 }
 
 // Comment

@@ -89,6 +89,42 @@ export class TasksController {
     return this.tasksService.setVoiceNote(id, null);
   }
 
+  // Attachments
+  @Post(':id/attachments')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads', 'attachments'),
+        filename: (_req, file, cb) => {
+          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
+          cb(null, uniqueName);
+        },
+      }),
+      limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+    }),
+  )
+  uploadAttachment(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.tasksService.addAttachment(id, {
+      filename: file.originalname,
+      url: `/uploads/attachments/${file.filename}`,
+      mimeType: file.mimetype,
+      size: file.size,
+    });
+  }
+
+  @Get(':id/attachments')
+  getAttachments(@Param('id') id: string) {
+    return this.tasksService.getAttachments(id);
+  }
+
+  @Delete('attachments/:attachmentId')
+  deleteAttachment(@Param('attachmentId') attachmentId: string) {
+    return this.tasksService.deleteAttachment(attachmentId);
+  }
+
   // Subtasks
   @Get(':id/subtasks')
   getSubtasks(@Param('id') id: string) {

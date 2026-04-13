@@ -61,6 +61,7 @@ export class TasksService {
         assignee: { select: { id: true, name: true, avatar: true } },
         tags: true,
         subtasks: { orderBy: { order: 'asc' } },
+        attachments: { orderBy: { createdAt: 'desc' } },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: { author: { select: { id: true, name: true, avatar: true } } },
@@ -162,6 +163,31 @@ export class TasksService {
         tags: true,
       },
     });
+  }
+
+  // ── Attachments ──
+
+  async addAttachment(taskId: string, file: { filename: string; url: string; mimeType: string; size: number }) {
+    return this.prisma.attachment.create({
+      data: {
+        filename: file.filename,
+        url: file.url,
+        mimeType: file.mimeType,
+        size: file.size,
+        taskId,
+      },
+    });
+  }
+
+  async getAttachments(taskId: string) {
+    return this.prisma.attachment.findMany({
+      where: { taskId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteAttachment(attachmentId: string) {
+    return this.prisma.attachment.delete({ where: { id: attachmentId } });
   }
 
   // ── Subtasks ──

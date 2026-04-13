@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Task } from "@repo/types";
@@ -129,6 +129,14 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
           {task.voiceNoteUrl && (
             <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]" title="Message vocal">
               <Mic className="h-3 w-3" />
+            </span>
+          )}
+
+          {/* Attachments */}
+          {task._count && (task._count.attachments ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]" title="Pieces jointes">
+              <Paperclip className="h-3 w-3" />
+              {task._count.attachments}
             </span>
           )}
 
