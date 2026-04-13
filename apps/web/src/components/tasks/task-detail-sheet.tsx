@@ -149,7 +149,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 border-0 shadow-2xl rounded-2xl max-h-[90vh] sm:max-h-[85vh]">
+      <DialogContent className="max-w-[95vw] md:max-w-3xl lg:max-w-4xl p-0 overflow-hidden gap-0 border-0 shadow-2xl rounded-2xl max-h-[92vh] sm:max-h-[88vh]">
         {loading || !task ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-[var(--muted-foreground)]" />
@@ -163,9 +163,9 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
             {/* Top color bar */}
             <div className={`h-1.5 w-full ${currentPriority.dot}`} />
 
-            <div className="flex flex-col lg:flex-row min-h-[400px]">
+            <div className="flex flex-col md:flex-row">
               {/* Left — Main content */}
-              <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto max-h-[60vh] sm:max-h-[70vh]">
+              <div className="flex-1 min-w-0 p-5 sm:p-6 space-y-5 overflow-y-auto max-h-[55vh] md:max-h-[80vh]">
                 {/* Title */}
                 <input
                   value={title}
@@ -181,7 +181,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={() => description !== (task.description || "") && updateField("description", description)}
                   placeholder="Ajouter une description..."
-                  className="w-full resize-none rounded-xl bg-[var(--surface-low)] px-4 py-3 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 border-none placeholder:text-[var(--muted-foreground)] leading-relaxed"
+                  className="w-full resize-none rounded-xl bg-[var(--surface-low)] px-4 py-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 border-none placeholder:text-[var(--muted-foreground)] leading-relaxed"
                 />
 
                 {/* Voice note */}
@@ -236,7 +236,6 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     </button>
                   </div>
 
-                  {/* Progress bar */}
                   {subtasksTotal > 0 && (
                     <div className="flex items-center gap-2 mb-3">
                       <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-high)] overflow-hidden">
@@ -251,7 +250,6 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     </div>
                   )}
 
-                  {/* Subtask list */}
                   <div className="space-y-1">
                     {subtasks.map((st) => (
                       <div
@@ -272,11 +270,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                             </svg>
                           )}
                         </button>
-                        <span
-                          className={`flex-1 text-sm ${
-                            st.done ? "line-through text-[var(--muted-foreground)]" : ""
-                          }`}
-                        >
+                        <span className={`flex-1 text-sm ${st.done ? "line-through text-[var(--muted-foreground)]" : ""}`}>
                           {st.title}
                         </span>
                         <button
@@ -289,7 +283,6 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     ))}
                   </div>
 
-                  {/* Add subtask input */}
                   {showSubtaskInput && (
                     <div className="flex items-center gap-2 mt-2">
                       <input
@@ -339,14 +332,14 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                           <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-[9px] font-bold text-white shrink-0 mt-0.5">
                             {c.author.name?.split(" ").map((n) => n[0]).join("").toUpperCase()}
                           </div>
-                          <div className="flex-1 bg-[var(--surface-low)] rounded-xl px-3 py-2">
-                            <div className="flex items-baseline gap-2">
+                          <div className="flex-1 min-w-0 bg-[var(--surface-low)] rounded-xl px-3 py-2">
+                            <div className="flex items-baseline gap-2 flex-wrap">
                               <span className="text-xs font-bold">{c.author.name}</span>
                               <span className="text-[10px] text-[var(--muted-foreground)]">
                                 {format(new Date(c.createdAt), "dd MMM HH:mm", { locale: fr })}
                               </span>
                             </div>
-                            <p className="text-sm mt-0.5">{c.content}</p>
+                            <p className="text-sm mt-0.5 break-words">{c.content}</p>
                           </div>
                         </div>
                       ))}
@@ -363,7 +356,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     <button
                       type="submit"
                       disabled={sendingComment || !comment.trim()}
-                      className="h-9 w-9 flex items-center justify-center gradient-primary text-white rounded-xl disabled:opacity-40 transition-all hover:shadow-md"
+                      className="h-9 w-9 flex items-center justify-center gradient-primary text-white rounded-xl disabled:opacity-40 transition-all hover:shadow-md shrink-0"
                     >
                       {sendingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </button>
@@ -371,8 +364,8 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                 </div>
               </div>
 
-              {/* Right — Sidebar info */}
-              <div className="w-full lg:w-60 border-t lg:border-t-0 lg:border-l border-[var(--border)] bg-[var(--surface-low)] p-4 sm:p-5 space-y-4 sm:space-y-5">
+              {/* Right — Sidebar */}
+              <div className="w-full md:w-64 shrink-0 border-t md:border-t-0 md:border-l border-[var(--border)] bg-[var(--surface-low)] p-5 space-y-5 overflow-y-auto max-h-[35vh] md:max-h-[80vh]">
                 {/* Priority */}
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2 block">
@@ -383,13 +376,13 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                       <button
                         key={p.value}
                         onClick={() => updateField("priority", p.value)}
-                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-all ${
+                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-all whitespace-nowrap ${
                           task.priority === p.value
                             ? p.bg + " ring-2 ring-offset-1 ring-current"
                             : "bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--surface-high)]"
                         }`}
                       >
-                        <div className={`h-2 w-2 rounded-full ${p.dot}`} />
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${p.dot}`} />
                         {p.label}
                       </button>
                     ))}
@@ -403,7 +396,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                   </label>
                   {assignee && (
                     <div className="flex items-center gap-2.5 mb-2 p-2 rounded-lg bg-[var(--background)]">
-                      <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[11px] font-bold text-white">
+                      <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[11px] font-bold text-white shrink-0">
                         {initials}
                       </div>
                       <p className="text-sm font-semibold truncate flex-1">{assignee.name}</p>
@@ -458,7 +451,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                 {/* Delete */}
                 <button
                   onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Supprimer

@@ -162,9 +162,9 @@ export function AttachmentList({ taskId, attachments, onChanged }: Props) {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{att.filename}</p>
+                  <p className="text-sm font-medium truncate" title={att.filename}>{att.filename}</p>
                   <p className="text-[10px] text-[var(--muted-foreground)]">
-                    {formatSize(att.size)}
+                    {formatSize(att.size)} — {att.mimeType.split("/")[1]?.toUpperCase() || "FICHIER"}
                   </p>
                 </div>
 
