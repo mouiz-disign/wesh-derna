@@ -21,16 +21,17 @@ import { KanbanCard } from "./kanban-card";
 import { AddColumnButton } from "./add-column-button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import type { Project, Task, Column } from "@repo/types";
+import type { Project, Task, Column, UserPreview } from "@repo/types";
 
 interface Props {
   project: Project;
   onTaskClick: (taskId: string) => void;
   onRefresh: () => void;
   filterAssigneeId?: string | null;
+  members?: UserPreview[];
 }
 
-export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId }: Props) {
+export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId, members = [] }: Props) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [columns, setColumns] = useState<Column[]>(project.columns);
   const prevProjectIdRef = useRef(project.id);
@@ -134,6 +135,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId 
               projectId={project.id}
               onTaskClick={onTaskClick}
               onRefresh={onRefresh}
+              members={members}
             />
           );
         })}

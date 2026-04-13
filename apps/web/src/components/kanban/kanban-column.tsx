@@ -17,16 +17,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import type { Column } from "@repo/types";
+import type { Column, UserPreview } from "@repo/types";
 
 interface Props {
   column: Column;
   projectId: string;
   onTaskClick: (taskId: string) => void;
   onRefresh: () => void;
+  members?: UserPreview[];
 }
 
-export function KanbanColumn({ column, projectId, onTaskClick, onRefresh }: Props) {
+export function KanbanColumn({ column, projectId, onTaskClick, onRefresh, members = [] }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(column.name);
@@ -131,7 +132,7 @@ export function KanbanColumn({ column, projectId, onTaskClick, onRefresh }: Prop
           strategy={verticalListSortingStrategy}
         >
           {column.tasks.map((task) => (
-            <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
+            <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} members={members} onRefresh={onRefresh} />
           ))}
         </SortableContext>
 

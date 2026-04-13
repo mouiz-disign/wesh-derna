@@ -240,6 +240,7 @@ export default function ProjectPage() {
             onTaskClick={(taskId) => setSelectedTaskId(taskId)}
             onRefresh={fetchProject}
             filterAssigneeId={filterAssigneeId}
+            members={members.map((m: any) => m.user || m)}
           />
         </div>
       ) : viewMode === "table" ? (

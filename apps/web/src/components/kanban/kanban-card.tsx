@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic, Paperclip } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic, Paperclip, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Task } from "@repo/types";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import type { Task, UserPreview } from "@repo/types";
 
 const priorityConfig = {
   LOW: { label: "Basse", bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400" },
@@ -18,9 +21,13 @@ interface Props {
   task: Task;
   onTaskClick: (taskId: string) => void;
   overlay?: boolean;
+  members?: UserPreview[];
+  onRefresh?: () => void;
 }
 
-export function KanbanCard({ task, onTaskClick, overlay }: Props) {
+export function KanbanCard({ task, onTaskClick, overlay, members = [], onRefresh }: Props) {
+  const [showAssignMenu, setShowAssignMenu] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -54,6 +61,17 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
   const hasVoice = !!task.voiceNoteUrl;
   const hasIndicators = subtasksTotal > 0 || commentsCount > 0 || attachmentsCount > 0 || hasVoice;
 
+  const handleAssign = async (userId: string | null) => {
+    try {
+      await api.put(`/tasks/${task.id}`, { assigneeId: userId });
+      toast.success(userId ? "Membre assigne" : "Assignation retiree");
+      onRefresh?.();
+    } catch {
+      toast.error("Erreur");
+    }
+    setShowAssignMenu(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -61,7 +79,7 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
       {...attributes}
       {...listeners}
       onClick={() => onTaskClick(task.id)}
-      className={`bg-[var(--surface-lowest)] rounded-xl p-4 shadow-executive hover:shadow-executive-hover transition-all group cursor-grab active:cursor-grabbing border border-[var(--border)] ${
+      className={`relative bg-[var(--surface-lowest)] rounded-xl p-4 shadow-executive hover:shadow-executive-hover transition-all group cursor-grab active:cursor-grabbing border border-[var(--border)] ${
         isDragging ? "opacity-50 scale-[1.02]" : "hover:scale-[1.01] hover:border-[var(--primary)]/30"
       } ${overlay ? "shadow-lg rotate-1 scale-105" : ""}`}
     >
@@ -151,19 +169,88 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
           )}
         </div>
 
-        {/* Assignee */}
-        {task.assignee ? (
-          <div
-            className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-[var(--surface-lowest)]"
-            title={task.assignee.name}
-          >
-            {initials}
-          </div>
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-[var(--surface-high)] border-2 border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center">
-            <span className="text-[10px] text-[var(--muted-foreground)]">?</span>
-          </div>
-        )}
+        {/* Assignee + quick assign */}
+        <div className="relative flex items-center gap-1.5">
+          {task.assignee ? (
+            <div
+              className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-[var(--surface-lowest)]"
+              title={task.assignee.name}
+            >
+              {initials}
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-[var(--surface-high)] border-2 border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center">
+              <span className="text-[10px] text-[var(--muted-foreground)]">?</span>
+            </div>
+          )}
+
+          {/* Quick assign button */}
+          {members.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAssignMenu(!showAssignMenu);
+              }}
+              className="w-6 h-6 rounded-full bg-[var(--surface-high)] border border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
+              title="Assigner un membre"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
+
+          {/* Quick assign dropdown */}
+          {showAssignMenu && (
+            <div
+              className="absolute bottom-full right-0 mb-2 w-48 bg-[var(--surface-lowest)] rounded-xl shadow-xl border border-[var(--border)] py-1.5 z-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-3 py-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                  Assigner
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowAssignMenu(false); }}
+                  className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--on-surface)]"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+
+              {task.assigneeId && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAssign(null); }}
+                  className="w-full px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  Retirer l&apos;assignation
+                </button>
+              )}
+
+              <div className="max-h-40 overflow-y-auto">
+                {members.map((m) => {
+                  const mInitials = m.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+                  const isActive = task.assigneeId === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={(e) => { e.stopPropagation(); handleAssign(m.id); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[var(--surface-low)] transition-colors ${
+                        isActive ? "bg-[var(--primary)]/5 font-bold" : ""
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                        {mInitials}
+                      </div>
+                      <span className="truncate">{m.name}</span>
+                      {isActive && (
+                        <span className="ml-auto text-[var(--primary)] text-[10px]">●</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
