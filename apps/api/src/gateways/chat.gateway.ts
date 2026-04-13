@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { ChannelsService } from '../channels/channels.service';
 
 interface ConnectedUser {
   userId: string;
@@ -32,6 +33,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private channelsService: ChannelsService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -57,7 +59,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         socketId: client.id,
       });
 
-      // Broadcast presence
       this.server.emit('presence:update', {
         userId: user.id,
         online: true,
@@ -131,6 +132,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  // ── DM ──
+
   @SubscribeMessage('message:dm')
   async handleDM(
     @ConnectedSocket() client: Socket,
@@ -150,9 +153,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
-    // Send to both sender and receiver
     const dmRoom = [connUser.userId, data.toUserId].sort().join(':');
     this.server.to(`dm:${dmRoom}`).emit('message:new', { message });
+
+    // Also notify the recipient globally for unread badge
+    this.emitToUser(data.toUserId, 'dm:new', { message });
   }
 
   @SubscribeMessage('join:dm')
@@ -165,6 +170,66 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const dmRoom = [connUser.userId, data.otherUserId].sort().join(':');
     client.join(`dm:${dmRoom}`);
   }
+
+  @SubscribeMessage('message:dm:typing')
+  handleDMTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { toUserId: string },
+  ) {
+    const connUser = this.connectedUsers.get(client.id);
+    if (!connUser) return;
+    const dmRoom = [connUser.userId, data.toUserId].sort().join(':');
+    client.to(`dm:${dmRoom}`).emit('message:dm:typing', {
+      userId: connUser.userId,
+      userName: connUser.userName,
+    });
+  }
+
+  // ── Reactions ──
+
+  @SubscribeMessage('message:react')
+  async handleReaction(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { messageId: string; emoji: string; channelId?: string; dmUserId?: string },
+  ) {
+    const connUser = this.connectedUsers.get(client.id);
+    if (!connUser) return;
+
+    const updated = await this.channelsService.toggleReaction(data.messageId, connUser.userId, data.emoji);
+
+    const payload = { messageId: data.messageId, reactions: updated.reactions };
+
+    if (data.channelId) {
+      this.server.to(`channel:${data.channelId}`).emit('message:reacted', payload);
+    } else if (data.dmUserId) {
+      const dmRoom = [connUser.userId, data.dmUserId].sort().join(':');
+      this.server.to(`dm:${dmRoom}`).emit('message:reacted', payload);
+    }
+  }
+
+  // ── Deletion ──
+
+  @SubscribeMessage('message:delete')
+  async handleDeleteMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { messageId: string; channelId?: string; dmUserId?: string },
+  ) {
+    const connUser = this.connectedUsers.get(client.id);
+    if (!connUser) return;
+
+    await this.channelsService.deleteMessage(data.messageId, connUser.userId);
+
+    const payload = { messageId: data.messageId };
+
+    if (data.channelId) {
+      this.server.to(`channel:${data.channelId}`).emit('message:deleted', payload);
+    } else if (data.dmUserId) {
+      const dmRoom = [connUser.userId, data.dmUserId].sort().join(':');
+      this.server.to(`dm:${dmRoom}`).emit('message:deleted', payload);
+    }
+  }
+
+  // ── Presence ──
 
   @SubscribeMessage('presence:get')
   handleGetPresence(@ConnectedSocket() client: Socket) {

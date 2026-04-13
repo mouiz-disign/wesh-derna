@@ -181,6 +181,23 @@ export interface Reaction {
   userIds: string[];
 }
 
+// DM Conversation (sidebar)
+export interface DMConversation {
+  user: UserPreview;
+  lastMessage: {
+    content: string;
+    createdAt: string;
+    authorId: string;
+  } | null;
+  unreadCount: number;
+}
+
+// Unread counts
+export interface UnreadCounts {
+  channels: Record<string, number>;
+  dms: Record<string, number>;
+}
+
 // Notification
 export interface Notification {
   id: string;

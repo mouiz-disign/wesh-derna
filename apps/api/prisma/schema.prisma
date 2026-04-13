@@ -39,6 +39,8 @@ model User {
   comments      Comment[]
   notifications Notification[]
   pages         Page[]
+  channelReads  ChannelRead[]
+  dmReads       DMRead[]
 
   @@map("users")
 }
@@ -200,6 +202,7 @@ model Channel {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   messages  Message[]
+  reads     ChannelRead[]
 
   @@map("channels")
 }
@@ -217,6 +220,31 @@ model Message {
   channel Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@map("messages")
+}
+
+model ChannelRead {
+  id         String   @id @default(cuid())
+  userId     String
+  channelId  String
+  lastReadAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@map("channel_reads")
+}
+
+model DMRead {
+  id          String   @id @default(cuid())
+  userId      String
+  otherUserId String
+  lastReadAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, otherUserId])
+  @@map("dm_reads")
 }
 
 model Notification {

@@ -21,7 +21,6 @@ export default function ChannelPage() {
 
   const channelId = params.channelId as string;
 
-  // Load channel info & messages
   useEffect(() => {
     const load = async () => {
       try {
@@ -32,6 +31,8 @@ export default function ChannelPage() {
         const ch = chanRes.data.find((c: Channel) => c.id === channelId);
         setChannel(ch || null);
         setMessages(msgRes.data);
+        // Mark as read
+        api.post(`/channels/${channelId}/read`).catch(() => {});
       } catch {} finally {
         setLoading(false);
       }
@@ -39,7 +40,6 @@ export default function ChannelPage() {
     load();
   }, [channelId, params.workspaceId]);
 
-  // Socket connection
   useEffect(() => {
     const socket = connectSocket();
 
@@ -48,41 +48,43 @@ export default function ChannelPage() {
     socket.on("message:new", (data: { message: Message }) => {
       if (data.message.channelId === channelId) {
         setMessages((prev) => [...prev, data.message]);
+        api.post(`/channels/${channelId}/read`).catch(() => {});
       }
     });
 
-    socket.on(
-      "message:typing",
-      (data: { channelId: string; userName: string; userId: string }) => {
-        if (data.channelId === channelId && data.userId !== user?.id) {
-          setTypingUsers((prev) =>
-            prev.includes(data.userName) ? prev : [...prev, data.userName],
-          );
-          // Clear after 3s
-          if (typingTimeout.current[data.userId]) {
-            clearTimeout(typingTimeout.current[data.userId]);
-          }
-          typingTimeout.current[data.userId] = setTimeout(() => {
-            setTypingUsers((prev) => prev.filter((n) => n !== data.userName));
-          }, 3000);
-        }
-      },
-    );
+    socket.on("message:typing", (data: { channelId: string; userName: string; userId: string }) => {
+      if (data.channelId === channelId && data.userId !== user?.id) {
+        setTypingUsers((prev) => prev.includes(data.userName) ? prev : [...prev, data.userName]);
+        if (typingTimeout.current[data.userId]) clearTimeout(typingTimeout.current[data.userId]);
+        typingTimeout.current[data.userId] = setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((n) => n !== data.userName));
+        }, 3000);
+      }
+    });
+
+    socket.on("message:reacted", (data: { messageId: string; reactions: any[] }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m)),
+      );
+    });
+
+    socket.on("message:deleted", (data: { messageId: string }) => {
+      setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
+    });
 
     return () => {
       socket.emit("leave:channel", { channelId });
       socket.off("message:new");
       socket.off("message:typing");
+      socket.off("message:reacted");
+      socket.off("message:deleted");
     };
   }, [channelId, user?.id]);
 
-  const handleSend = useCallback(
-    (content: string) => {
-      const socket = getSocket();
-      socket.emit("message:send", { content, channelId });
-    },
-    [channelId],
-  );
+  const handleSend = useCallback((content: string) => {
+    const socket = getSocket();
+    socket.emit("message:send", { content, channelId });
+  }, [channelId]);
 
   const handleTyping = useCallback(() => {
     const socket = getSocket();
@@ -99,16 +101,17 @@ export default function ChannelPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
       <div className="flex items-center gap-2 border-b px-6 py-3">
         <Hash className="h-5 w-5 text-muted-foreground" />
         <h2 className="font-semibold">{channel?.name || "Channel"}</h2>
       </div>
 
-      {/* Messages */}
-      <ChatMessageList messages={messages} currentUserId={user?.id || ""} />
+      <ChatMessageList
+        messages={messages}
+        currentUserId={user?.id || ""}
+        channelId={channelId}
+      />
 
-      {/* Typing indicator */}
       {typingUsers.length > 0 && (
         <div className="px-6 py-1 text-xs text-muted-foreground animate-pulse">
           {typingUsers.join(", ")}{" "}
@@ -116,7 +119,6 @@ export default function ChannelPage() {
         </div>
       )}
 
-      {/* Input */}
       <ChatInput
         onSend={handleSend}
         onTyping={handleTyping}

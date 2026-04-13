@@ -33,6 +33,24 @@ export class PrismaService
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      await this.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS channel_reads (
+          id TEXT PRIMARY KEY,
+          "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          "channelId" TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+          "lastReadAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE("userId", "channelId")
+        );
+      `);
+      await this.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS dm_reads (
+          id TEXT PRIMARY KEY,
+          "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          "otherUserId" TEXT NOT NULL,
+          "lastReadAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE("userId", "otherUserId")
+        );
+      `);
       this.logger.log('Database migrations checked');
     } catch (err) {
       this.logger.warn('Migration check failed (non-critical): ' + err);
