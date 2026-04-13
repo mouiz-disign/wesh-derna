@@ -43,12 +43,16 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
     .toUpperCase()
     .slice(0, 2);
 
-  const isOverdue =
-    task.deadline && new Date(task.deadline) < new Date();
+  const isOverdue = task.deadline && new Date(task.deadline) < new Date();
 
   const subtasksDone = task.subtasks?.filter((s) => s.done).length ?? 0;
   const subtasksTotal = task.subtasks?.length ?? 0;
   const subtaskProgress = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
+
+  const commentsCount = task._count?.comments ?? 0;
+  const attachmentsCount = task._count?.attachments ?? 0;
+  const hasVoice = !!task.voiceNoteUrl;
+  const hasIndicators = subtasksTotal > 0 || commentsCount > 0 || attachmentsCount > 0 || hasVoice;
 
   return (
     <div
@@ -72,35 +76,33 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
       </div>
 
       {/* Title */}
-      <h4 className="font-semibold text-sm text-[var(--on-surface)] leading-snug mb-3">
+      <h4 className="font-semibold text-sm text-[var(--on-surface)] leading-snug mb-2">
         {task.title}
       </h4>
 
-      {/* Description */}
+      {/* Description preview */}
       {task.description && (
-        <p className="text-xs text-[var(--muted-foreground)] mb-3 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-[var(--muted-foreground)] mb-2 line-clamp-2 leading-relaxed">
           {task.description}
         </p>
       )}
 
-      {/* Subtask progress */}
+      {/* Subtask progress bar */}
       {subtasksTotal > 0 && (
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]">
               <CheckSquare className="h-3 w-3" />
               {subtasksDone}/{subtasksTotal}
             </span>
-            <span className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+            <span className={`text-[10px] font-bold ${subtaskProgress === 100 ? "text-emerald-500" : "text-[var(--muted-foreground)]"}`}>
               {subtaskProgress}%
             </span>
           </div>
           <div className="w-full h-1.5 bg-[var(--surface-high)] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                subtaskProgress === 100
-                  ? "bg-emerald-500"
-                  : "bg-[var(--primary)]"
+                subtaskProgress === 100 ? "bg-emerald-500" : "bg-[var(--primary)]"
               }`}
               style={{ width: `${subtaskProgress}%` }}
             />
@@ -108,43 +110,43 @@ export function KanbanCard({ task, onTaskClick, overlay }: Props) {
         </div>
       )}
 
-      {/* Footer */}
+      {/* Indicators row */}
+      {hasIndicators && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+          {hasVoice && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+              <Mic className="h-3 w-3" />
+              Vocal
+            </span>
+          )}
+          {attachmentsCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              <Paperclip className="h-3 w-3" />
+              {attachmentsCount}
+            </span>
+          )}
+          {commentsCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+              <MessageSquare className="h-3 w-3" />
+              {commentsCount}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Footer: deadline + assignee */}
       <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-        <div className="flex items-center gap-3">
-          {/* Deadline */}
+        <div>
           {task.deadline && (
             <span
               className={`flex items-center gap-1 text-[11px] font-medium ${
                 isOverdue
-                  ? "text-[#ba1a1a]"
+                  ? "text-red-600 dark:text-red-400"
                   : "text-[var(--muted-foreground)]"
               }`}
             >
               <Calendar className="h-3 w-3" />
               {format(new Date(task.deadline), "dd MMM", { locale: fr })}
-            </span>
-          )}
-
-          {/* Voice note indicator */}
-          {task.voiceNoteUrl && (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]" title="Message vocal">
-              <Mic className="h-3 w-3" />
-            </span>
-          )}
-
-          {/* Attachments */}
-          {task._count && (task._count.attachments ?? 0) > 0 && (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]" title="Pieces jointes">
-              <Paperclip className="h-3 w-3" />
-              {task._count.attachments}
-            </span>
-          )}
-
-          {/* Comments */}
-          {task._count && task._count.comments > 0 && (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--muted-foreground)]">
-              <MessageSquare className="h-3 w-3" />
-              {task._count.comments}
             </span>
           )}
         </div>
