@@ -19,6 +19,8 @@ import {
   Plus,
   X,
   Mic,
+  GripVertical,
+  Pencil,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -51,9 +53,13 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const [members, setMembers] = useState<UserPreview[]>([]);
-  const [subtasks, setSubtasks] = useState<{ id: string; title: string; done: boolean }[]>([]);
+  const [subtasks, setSubtasks] = useState<{ id: string; title: string; done: boolean; weight: number; order: number }[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingWeight, setEditingWeight] = useState(0);
+  const [dragSubtaskId, setDragSubtaskId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   useEffect(() => {
@@ -129,6 +135,31 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
     }
   };
 
+  const handleUpdateSubtask = async (subtaskId: string) => {
+    if (!editingTitle.trim()) return;
+    try {
+      const { data } = await api.patch(`/tasks/subtasks/${subtaskId}`, {
+        title: editingTitle.trim(),
+        weight: editingWeight,
+      });
+      setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? data : s)));
+      setEditingSubtaskId(null);
+    } catch { toast.error("Erreur"); }
+  };
+
+  const handleDragReorder = async (fromIndex: number, toIndex: number) => {
+    const reordered = [...subtasks];
+    const [moved] = reordered.splice(fromIndex, 1);
+    if (!moved) return;
+    reordered.splice(toIndex, 0, moved);
+    setSubtasks(reordered);
+    try {
+      await api.patch(`/tasks/${taskId}/subtasks/reorder`, {
+        subtaskIds: reordered.map((s) => s.id),
+      });
+    } catch { toast.error("Erreur reorder"); }
+  };
+
   const handleDeleteSubtask = async (subtaskId: string) => {
     try {
       await api.delete(`/tasks/subtasks/${subtaskId}`);
@@ -140,7 +171,12 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
 
   const subtasksDone = subtasks.filter((s) => s.done).length;
   const subtasksTotal = subtasks.length;
-  const subtaskProgress = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
+  const hasWeights = subtasks.some((s) => s.weight > 0);
+  const totalWeight = hasWeights ? subtasks.reduce((sum, s) => sum + (s.weight || 0), 0) : 0;
+  const doneWeight = hasWeights ? subtasks.filter((s) => s.done).reduce((sum, s) => sum + (s.weight || 0), 0) : 0;
+  const subtaskProgress = hasWeights && totalWeight > 0
+    ? Math.round((doneWeight / totalWeight) * 100)
+    : subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
 
   const currentPriority = priorityOptions.find((p) => p.value === task?.priority) || priorityOptions[1]!;
   const assignee = task?.assignee;
@@ -250,35 +286,98 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     </div>
                   )}
 
-                  <div className="space-y-1">
-                    {subtasks.map((st) => (
+                  <div className="space-y-0.5">
+                    {subtasks.map((st, idx) => (
                       <div
                         key={st.id}
-                        className="flex items-center gap-2.5 group py-1.5 px-2 rounded-lg hover:bg-[var(--surface-low)] transition-colors"
+                        draggable
+                        onDragStart={() => setDragSubtaskId(st.id)}
+                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDrop={() => {
+                          if (dragSubtaskId && dragSubtaskId !== st.id) {
+                            const fromIdx = subtasks.findIndex((s) => s.id === dragSubtaskId);
+                            handleDragReorder(fromIdx, idx);
+                          }
+                          setDragSubtaskId(null);
+                        }}
+                        onDragEnd={() => setDragSubtaskId(null)}
+                        className={`flex items-center gap-2 group py-1.5 px-2 rounded-lg hover:bg-[var(--surface-low)] transition-colors ${
+                          dragSubtaskId === st.id ? "opacity-40" : ""
+                        }`}
                       >
+                        {/* Drag handle */}
+                        <GripVertical className="h-3.5 w-3.5 text-[var(--muted-foreground)] opacity-0 group-hover:opacity-50 cursor-grab shrink-0" />
+
+                        {/* Checkbox */}
                         <button
                           onClick={() => handleToggleSubtask(st.id)}
-                          className={`w-4.5 h-4.5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                            st.done
-                              ? "bg-emerald-500 border-emerald-500 text-white"
-                              : "border-[var(--muted-foreground)]/40 hover:border-[var(--primary)]"
+                          className={`w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                            st.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-[var(--muted-foreground)]/40 hover:border-[var(--primary)]"
                           }`}
                         >
                           {st.done && (
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </button>
-                        <span className={`flex-1 text-sm ${st.done ? "line-through text-[var(--muted-foreground)]" : ""}`}>
-                          {st.title}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteSubtask(st.id)}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-red-500 transition-all"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+
+                        {editingSubtaskId === st.id ? (
+                          /* Edit mode */
+                          <div className="flex-1 flex items-center gap-2">
+                            <input
+                              autoFocus
+                              value={editingTitle}
+                              onChange={(e) => setEditingTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleUpdateSubtask(st.id);
+                                if (e.key === "Escape") setEditingSubtaskId(null);
+                              }}
+                              className="flex-1 h-7 px-2 text-sm rounded bg-[var(--surface-low)] border-none outline-none focus:ring-1 focus:ring-[var(--primary)]/30"
+                            />
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={editingWeight}
+                                onChange={(e) => setEditingWeight(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                                className="w-12 h-7 px-1.5 text-xs text-center rounded bg-[var(--surface-low)] border-none outline-none focus:ring-1 focus:ring-[var(--primary)]/30"
+                              />
+                              <span className="text-[10px] text-[var(--muted-foreground)]">%</span>
+                            </div>
+                            <button onClick={() => handleUpdateSubtask(st.id)} className="p-1 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                            <button onClick={() => setEditingSubtaskId(null)} className="p-1 text-[var(--muted-foreground)] hover:bg-[var(--surface-high)] rounded">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          /* View mode */
+                          <>
+                            <span className={`flex-1 text-sm ${st.done ? "line-through text-[var(--muted-foreground)]" : ""}`}>
+                              {st.title}
+                            </span>
+                            {st.weight > 0 && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${st.done ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-[var(--surface-high)] text-[var(--muted-foreground)]"}`}>
+                                {st.weight}%
+                              </span>
+                            )}
+                            <button
+                              onClick={() => { setEditingSubtaskId(st.id); setEditingTitle(st.title); setEditingWeight(st.weight || 0); }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSubtask(st.id)}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-red-500 transition-all"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -230,6 +230,24 @@ export class TasksService {
     });
   }
 
+  async updateSubtask(subtaskId: string, data: { title?: string; weight?: number }) {
+    return this.prisma.subtask.update({
+      where: { id: subtaskId },
+      data,
+    });
+  }
+
+  async reorderSubtasks(taskId: string, subtaskIds: string[]) {
+    const updates = subtaskIds.map((id, index) =>
+      this.prisma.subtask.update({ where: { id }, data: { order: index } }),
+    );
+    await this.prisma.$transaction(updates);
+    return this.prisma.subtask.findMany({
+      where: { taskId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
   async deleteSubtask(subtaskId: string) {
     return this.prisma.subtask.delete({ where: { id: subtaskId } });
   }

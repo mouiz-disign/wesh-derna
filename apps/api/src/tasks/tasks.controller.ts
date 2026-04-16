@@ -146,6 +146,16 @@ export class TasksController {
     return this.tasksService.toggleSubtask(subtaskId);
   }
 
+  @Patch('subtasks/:subtaskId')
+  updateSubtask(@Param('subtaskId') subtaskId: string, @Body() dto: { title?: string; weight?: number }) {
+    return this.tasksService.updateSubtask(subtaskId, dto);
+  }
+
+  @Patch(':id/subtasks/reorder')
+  reorderSubtasks(@Param('id') taskId: string, @Body() dto: { subtaskIds: string[] }) {
+    return this.tasksService.reorderSubtasks(taskId, dto.subtaskIds);
+  }
+
   @Delete('subtasks/:subtaskId')
   deleteSubtask(@Param('subtaskId') subtaskId: string) {
     return this.tasksService.deleteSubtask(subtaskId);

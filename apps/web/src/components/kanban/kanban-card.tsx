@@ -54,7 +54,12 @@ export function KanbanCard({ task, onTaskClick, overlay, members = [], onRefresh
 
   const subtasksDone = task.subtasks?.filter((s) => s.done).length ?? 0;
   const subtasksTotal = task.subtasks?.length ?? 0;
-  const subtaskProgress = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
+  const hasWeights = task.subtasks?.some((s) => (s.weight ?? 0) > 0) ?? false;
+  const totalWeight = hasWeights ? (task.subtasks?.reduce((sum, s) => sum + (s.weight ?? 0), 0) ?? 0) : 0;
+  const doneWeight = hasWeights ? (task.subtasks?.filter((s) => s.done).reduce((sum, s) => sum + (s.weight ?? 0), 0) ?? 0) : 0;
+  const subtaskProgress = hasWeights && totalWeight > 0
+    ? Math.round((doneWeight / totalWeight) * 100)
+    : subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
 
   const commentsCount = task._count?.comments ?? 0;
   const attachmentsCount = task._count?.attachments ?? 0;
