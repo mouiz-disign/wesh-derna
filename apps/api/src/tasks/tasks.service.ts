@@ -54,7 +54,7 @@ export class TasksService {
       },
     });
 
-    // Notify assignee
+    // Notify assignee directly
     if (task.assigneeId) {
       const notif = await this.notifications.create({
         userId: task.assigneeId,
@@ -62,8 +62,24 @@ export class TasksService {
         title: 'Nouvelle tache assignee',
         message: `Vous avez ete assigne a "${task.title}"`,
         link: `/projects/${task.projectId}`,
+        projectId: task.projectId,
       });
       this.gateway.emitToUser(task.assigneeId, 'notification:new', { notification: notif });
+    }
+
+    // Notify project members with notifs enabled (except creator and assignee)
+    const recipients = await this.notifications.getNotifRecipients(task.projectId, dto.assigneeId || '');
+    for (const userId of recipients) {
+      if (userId === task.assigneeId) continue; // already notified above
+      const notif = await this.notifications.create({
+        userId,
+        type: 'task.created',
+        title: 'Nouvelle tache',
+        message: `"${task.title}" a ete ajoutee au projet`,
+        link: `/projects/${task.projectId}`,
+        projectId: task.projectId,
+      });
+      this.gateway.emitToUser(userId, 'notification:new', { notification: notif });
     }
 
     return task;
@@ -110,6 +126,7 @@ export class TasksService {
         title: 'Tache assignee',
         message: `Vous avez ete assigne a "${task.title}"`,
         link: `/projects/${task.projectId}`,
+        projectId: task.projectId,
       });
       this.gateway.emitToUser(dto.assigneeId, 'notification:new', { notification: notif });
     }

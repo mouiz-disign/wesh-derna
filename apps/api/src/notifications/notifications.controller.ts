@@ -30,4 +30,9 @@ export class NotificationsController {
   markAllAsRead(@Req() req: Request) {
     return this.notificationsService.markAllAsRead((req as any).user.id);
   }
+
+  @Get('task-report/:projectId')
+  getTaskNotifReport(@Param('projectId') projectId: string) {
+    return this.notificationsService.getNotifsByProject(projectId);
+  }
 }

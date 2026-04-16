@@ -41,6 +41,7 @@ model User {
   pages         Page[]
   channelReads  ChannelRead[]
   dmReads       DMRead[]
+  notifSettings ProjectNotifSetting[]
 
   @@map("users")
 }
@@ -84,12 +85,14 @@ model Project {
   workspaceId String
   createdAt   DateTime @default(now())
 
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  columns     Column[]
-  tasks       Task[]
-  members     ProjectMember[]
-  automations Automation[]
-  invitations Invitation[]
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns        Column[]
+  tasks          Task[]
+  members        ProjectMember[]
+  automations    Automation[]
+  invitations    Invitation[]
+  notifSettings  ProjectNotifSetting[]
+  notifications  Notification[]
 
   @@map("projects")
 }
@@ -256,18 +259,34 @@ model DMRead {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   type      String
   title     String
   message   String
   link      String?
-  read      Boolean  @default(false)
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  projectId String?
   userId    String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+model ProjectNotifSetting {
+  id        String  @id @default(cuid())
+  projectId String
+  userId    String
+  enabled   Boolean @default(true)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_notif_settings")
 }
 
 model Page {

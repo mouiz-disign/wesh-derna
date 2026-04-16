@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import {
   Bell,
   CheckCheck,
+  Check,
   Loader2,
   MessageSquare,
   UserPlus,
   Clock,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -18,6 +20,7 @@ import type { Notification } from "@repo/types";
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   "task.assigned": UserPlus,
+  "task.created": Plus,
   "task.commented": MessageSquare,
   "task.deadline": Clock,
 };
@@ -50,13 +53,13 @@ export default function NotificationsPage() {
   const markAsRead = async (id: string) => {
     await api.patch(`/notifications/${id}/read`);
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      prev.map((n) => (n.id === id ? { ...n, read: true, readAt: new Date().toISOString() } : n)),
     );
   };
 
   const markAllRead = async () => {
     await api.patch("/notifications/read-all");
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true, readAt: n.readAt || new Date().toISOString() })));
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -124,14 +127,27 @@ export default function NotificationsPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {notif.message}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {format(new Date(notif.createdAt), "dd MMM yyyy HH:mm", {
-                      locale: fr,
-                    })}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(notif.createdAt), "dd MMM yyyy HH:mm", { locale: fr })}
+                    </span>
+                    {/* Read receipt indicator */}
+                    {notif.read && notif.readAt && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-blue-500" title={`Lu le ${format(new Date(notif.readAt), "dd MMM HH:mm", { locale: fr })}`}>
+                        <CheckCheck className="h-3 w-3" />
+                        Lu
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {!notif.read && (
-                  <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                {!notif.read ? (
+                  <div className="mt-2 flex items-center gap-1">
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  </div>
+                ) : (
+                  <span className="mt-2 shrink-0">
+                    <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
                 )}
               </button>
             );

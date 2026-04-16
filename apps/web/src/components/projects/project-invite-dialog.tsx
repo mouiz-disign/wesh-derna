@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { Link2, Copy, Check, Loader2, X, UserPlus, UserMinus } from "lucide-react";
+import { Link2, Copy, Check, Loader2, X, UserPlus, UserMinus, Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
-import type { WorkspaceMember, ProjectMember } from "@repo/types";
+import type { WorkspaceMember, ProjectMember, ProjectNotifSetting } from "@repo/types";
 
 interface Props {
   workspaceId: string;
@@ -22,6 +22,7 @@ export function ProjectInviteDialog({ workspaceId, projectId, projectName, open,
   const [copied, setCopied] = useState(false);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+  const [notifSettings, setNotifSettings] = useState<ProjectNotifSetting[]>([]);
 
   const workspaceMembers = workspace?.members || [];
 
@@ -29,6 +30,9 @@ export function ProjectInviteDialog({ workspaceId, projectId, projectName, open,
     if (open) {
       api.get(`/projects/${projectId}/members`)
         .then(({ data }) => setProjectMembers(data))
+        .catch(() => {});
+      api.get(`/projects/${projectId}/notif-settings`)
+        .then(({ data }) => setNotifSettings(data))
         .catch(() => {});
     }
   }, [open, projectId]);
@@ -141,6 +145,28 @@ export function ProjectInviteDialog({ workspaceId, projectId, projectName, open,
                       <span className="text-[10px] font-bold uppercase text-[var(--muted-foreground)]">
                         {pm.role === "ADMIN" ? "Admin" : "Membre"}
                       </span>
+                      {(() => {
+                        const setting = notifSettings.find((s) => s.userId === pm.userId);
+                        const isEnabled = setting?.enabled ?? true;
+                        return (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.patch(`/projects/${projectId}/notif-settings/${pm.userId}`, { enabled: !isEnabled });
+                                setNotifSettings((prev) =>
+                                  prev.map((s) => s.userId === pm.userId ? { ...s, enabled: !isEnabled } : s)
+                                    .concat(prev.find((s) => s.userId === pm.userId) ? [] : [{ id: '', projectId, userId: pm.userId, enabled: !isEnabled, user: pm.user }]),
+                                );
+                                toast.success(isEnabled ? "Notifications desactivees" : "Notifications activees");
+                              } catch { toast.error("Erreur"); }
+                            }}
+                            className={`p-1 rounded transition-colors ${isEnabled ? "text-[var(--primary)] hover:bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-high)]"}`}
+                            title={isEnabled ? "Notifications activees" : "Notifications desactivees"}
+                          >
+                            {isEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                          </button>
+                        );
+                      })()}
                       {pm.role !== "ADMIN" && (
                         <button
                           onClick={() => handleRemoveMember(pm.userId)}

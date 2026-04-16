@@ -73,6 +73,21 @@ export class ProjectsController {
     return this.projectsService.removeProjectMember(id, userId);
   }
 
+  // Notification settings
+  @Get('projects/:id/notif-settings')
+  getNotifSettings(@Param('id') id: string) {
+    return this.projectsService.getNotifSettings(id);
+  }
+
+  @Patch('projects/:id/notif-settings/:userId')
+  updateNotifSetting(
+    @Param('id') projectId: string,
+    @Param('userId') userId: string,
+    @Body() dto: { enabled: boolean },
+  ) {
+    return this.projectsService.updateNotifSetting(projectId, userId, dto.enabled);
+  }
+
   @Put('projects/:id')
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return this.projectsService.update(id, dto);

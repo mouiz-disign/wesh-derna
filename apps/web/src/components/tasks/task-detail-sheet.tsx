@@ -21,6 +21,9 @@ import {
   Mic,
   GripVertical,
   Pencil,
+  Eye,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -57,6 +60,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
   const [newSubtask, setNewSubtask] = useState("");
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [taskNotifs, setTaskNotifs] = useState<{ user: { id: string; name: string }; read: boolean; readAt: string | null; title: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingWeight, setEditingWeight] = useState(0);
   const [dragSubtaskId, setDragSubtaskId] = useState<string | null>(null);
@@ -76,6 +80,16 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
         setMembers(wsRes.data.members?.map((m: any) => m.user) || []);
         setSubtasks(taskRes.data.subtasks || []);
         setAttachments(taskRes.data.attachments || []);
+        // Fetch notification read report for this task's project
+        if (taskRes.data.projectId) {
+          api.get(`/notifications/task-report/${taskRes.data.projectId}`)
+            .then(({ data: notifs }) => {
+              const taskTitle = taskRes.data.title;
+              const relevant = notifs.filter((n: any) => n.message?.includes(taskTitle));
+              setTaskNotifs(relevant);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => toast.error("Erreur chargement"))
       .finally(() => setLoading(false));
@@ -546,6 +560,38 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     {format(new Date(task.createdAt), "dd MMMM yyyy", { locale: fr })}
                   </p>
                 </div>
+
+                {/* Read report (Vu par) */}
+                {taskNotifs.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2 block flex items-center gap-1.5">
+                      <Eye className="h-3 w-3" />
+                      Rapport de lecture
+                    </label>
+                    <div className="space-y-1.5">
+                      {taskNotifs.map((n, i) => {
+                        const init = n.user.name?.split(" ").map((c: string) => c[0]).join("").toUpperCase().slice(0, 2);
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                              {init}
+                            </div>
+                            <span className="flex-1 truncate">{n.user.name}</span>
+                            {n.read ? (
+                              <span className="flex items-center gap-0.5 text-blue-500" title={n.readAt ? `Lu le ${format(new Date(n.readAt), "dd MMM HH:mm", { locale: fr })}` : "Lu"}>
+                                <CheckCheck className="h-3 w-3" />
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-0.5 text-[var(--muted-foreground)]" title="Non lu">
+                                <Check className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Delete */}
                 <button

@@ -212,8 +212,19 @@ export interface Notification {
   message: string;
   link: string | null;
   read: boolean;
+  readAt: string | null;
+  projectId: string | null;
   userId: string;
   createdAt: string;
+}
+
+// Project Notification Settings
+export interface ProjectNotifSetting {
+  id: string;
+  projectId: string;
+  userId: string;
+  enabled: boolean;
+  user: UserPreview;
 }
 
 // WebSocket Events

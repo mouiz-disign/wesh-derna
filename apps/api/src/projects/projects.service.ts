@@ -130,6 +130,36 @@ export class ProjectsService {
     return this.prisma.project.delete({ where: { id } });
   }
 
+  // ── Notification settings ──
+
+  async getNotifSettings(projectId: string) {
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+    });
+
+    const settings = await this.prisma.projectNotifSetting.findMany({
+      where: { projectId },
+    });
+
+    const settingsMap = new Map(settings.map((s) => [s.userId, s]));
+
+    return members.map((m) => ({
+      projectId,
+      userId: m.userId,
+      enabled: settingsMap.get(m.userId)?.enabled ?? true, // default enabled
+      user: m.user,
+    }));
+  }
+
+  async updateNotifSetting(projectId: string, userId: string, enabled: boolean) {
+    return this.prisma.projectNotifSetting.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      create: { projectId, userId, enabled },
+      update: { enabled },
+    });
+  }
+
   // ── Column management ──
 
   async addColumn(projectId: string, name: string, color?: string) {
