@@ -70,7 +70,7 @@ export class ProjectsService {
                 assignee: { select: { id: true, name: true, avatar: true } },
                 tags: true,
                 _count: { select: { comments: true, subtasks: true, attachments: true } },
-                subtasks: { select: { done: true, weight: true } },
+                subtasks: { select: { id: true, title: true, done: true, weight: true, order: true }, orderBy: { order: 'asc' } },
               },
             },
           },

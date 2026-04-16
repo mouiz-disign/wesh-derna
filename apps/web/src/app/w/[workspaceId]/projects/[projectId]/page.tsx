@@ -227,10 +227,25 @@ function TabBtn({ icon: Icon, label, active, onClick }: { icon: React.ComponentT
 /* ── Table View ── */
 function TableView({ project, onTaskClick }: { project: Project; onTaskClick: (id: string) => void }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+  const [togglingSubtask, setTogglingSubtask] = useState<string | null>(null);
+
+  const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTasks((p) => ({ ...p, [taskId]: !p[taskId] }));
+  };
+
+  const handleToggleSubtask = async (subtaskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTogglingSubtask(subtaskId);
+    try {
+      await api.patch(`/tasks/subtasks/${subtaskId}/toggle`);
+    } catch {}
+    setTogglingSubtask(null);
+  };
 
   return (
     <div className="h-full overflow-auto">
-      {/* Header */}
       <div className="grid grid-cols-[1fr_130px_120px_100px_100px] gap-0 border-b bg-[var(--surface-low)] px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] sticky top-0 z-10">
         <span>Tache</span>
         <span>Assignee</span>
@@ -255,27 +270,80 @@ function TableView({ project, onTaskClick }: { project: Project; onTaskClick: (i
 
             {!isCollapsed && col.tasks.map((task) => {
               const init = task.assignee?.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+              const hasSubtasks = (task.subtasks?.length ?? 0) > 0;
+              const isExpanded = !!expandedTasks[task.id];
+              const doneSubs = task.subtasks?.filter((s) => s.done).length ?? 0;
+              const totalSubs = task.subtasks?.length ?? 0;
+
               return (
-                <div key={task.id} onClick={() => onTaskClick(task.id)} className="grid grid-cols-[1fr_130px_120px_100px_100px] gap-0 border-b px-6 py-2.5 text-sm hover:bg-[var(--surface-low)]/50 cursor-pointer transition-colors items-center">
-                  <span className="font-medium truncate">{task.title}</span>
-                  <div className="flex items-center gap-2">
-                    {task.assignee ? (
-                      <>
-                        <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white">{init}</div>
-                        <span className="text-xs text-[var(--muted-foreground)] truncate">{task.assignee.name}</span>
-                      </>
-                    ) : <span className="text-xs text-[var(--muted-foreground)]">—</span>}
+                <div key={task.id}>
+                  {/* Task row */}
+                  <div onClick={() => onTaskClick(task.id)} className="grid grid-cols-[1fr_130px_120px_100px_100px] gap-0 border-b px-6 py-2.5 text-sm hover:bg-[var(--surface-low)]/50 cursor-pointer transition-colors items-center">
+                    <div className="flex items-center gap-1.5">
+                      {hasSubtasks ? (
+                        <button onClick={(e) => toggleTaskExpand(task.id, e)} className="p-0.5 rounded hover:bg-[var(--surface-high)] text-[var(--muted-foreground)] shrink-0">
+                          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        </button>
+                      ) : <span className="w-4" />}
+                      <span className="font-medium truncate">{task.title}</span>
+                      {hasSubtasks && (
+                        <span className="text-[10px] text-[var(--muted-foreground)] shrink-0">{doneSubs}/{totalSubs}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {task.assignee ? (
+                        <>
+                          <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white">{init}</div>
+                          <span className="text-xs text-[var(--muted-foreground)] truncate">{task.assignee.name}</span>
+                        </>
+                      ) : <span className="text-xs text-[var(--muted-foreground)]">—</span>}
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color || "#94a3b8" }} />
+                      {col.name}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold w-fit ${priorityBadge[task.priority] || ""}`}>
+                      {priorityLabels[task.priority] || task.priority}
+                    </span>
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {task.deadline ? new Date(task.deadline).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
+                    </span>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color || "#94a3b8" }} />
-                    {col.name}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold w-fit ${priorityBadge[task.priority] || ""}`}>
-                    {priorityLabels[task.priority] || task.priority}
-                  </span>
-                  <span className="text-xs text-[var(--muted-foreground)]">
-                    {task.deadline ? new Date(task.deadline).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
-                  </span>
+
+                  {/* Subtask rows (expanded) */}
+                  {isExpanded && task.subtasks?.map((st) => (
+                    <div
+                      key={st.id}
+                      className="grid grid-cols-[1fr_130px_120px_100px_100px] gap-0 border-b pl-14 pr-6 py-2 text-sm bg-[var(--surface-low)]/30 hover:bg-[var(--surface-low)]/60 transition-colors items-center"
+                    >
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleToggleSubtask(st.id, e)}
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                            st.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-[var(--muted-foreground)]/40 hover:border-[var(--primary)]"
+                          } ${togglingSubtask === st.id ? "opacity-50" : ""}`}
+                        >
+                          {st.done && (
+                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                        <span className={`text-xs ${st.done ? "line-through text-[var(--muted-foreground)]" : ""}`}>
+                          {st.title}
+                        </span>
+                        {(st.weight ?? 0) > 0 && (
+                          <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${st.done ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-[var(--surface-high)] text-[var(--muted-foreground)]"}`}>
+                            {st.weight}%
+                          </span>
+                        )}
+                      </div>
+                      <span />
+                      <span className="text-[10px] text-[var(--muted-foreground)]">{st.done ? "Fait" : "A faire"}</span>
+                      <span />
+                      <span />
+                    </div>
+                  ))}
                 </div>
               );
             })}

@@ -108,7 +108,7 @@ export interface Task {
   assignee: UserPreview | null;
   tags: Tag[];
   createdAt: string;
-  subtasks?: { done: boolean; weight?: number }[];
+  subtasks?: { id: string; title: string; done: boolean; weight?: number; order?: number }[];
   attachments?: Attachment[];
   _count?: { comments: number; subtasks?: number; attachments?: number };
 }
