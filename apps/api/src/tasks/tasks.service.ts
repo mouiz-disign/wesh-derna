@@ -144,6 +144,18 @@ export class TasksService {
       this.gateway.emitToUser(dto.assigneeId, 'notification:new', { notification: notif });
     }
 
+    // Auto-reorder: URGENT/HIGH tasks go to top
+    if (dto.priority && (dto.priority === 'URGENT' || dto.priority === 'HIGH') && existing?.priority !== dto.priority) {
+      await this.prisma.task.updateMany({
+        where: { columnId: task.columnId, order: { lte: 0 } },
+        data: { order: { increment: 1 } },
+      });
+      await this.prisma.task.update({
+        where: { id },
+        data: { order: dto.priority === 'URGENT' ? -2 : -1 },
+      });
+    }
+
     return task;
   }
 

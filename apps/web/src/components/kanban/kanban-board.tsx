@@ -15,6 +15,7 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
@@ -40,7 +41,6 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // Sync columns when project data changes (but not during drag)
   useEffect(() => {
     if (!activeTask) {
       setColumns(project.columns);
@@ -51,10 +51,8 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
   const allTasks = columns.flatMap((col) => col.tasks);
 
   const findColumn = (id: string): Column | undefined => {
-    // Check if id is a column
     const col = columns.find((c) => c.id === id);
     if (col) return col;
-    // Check if id is a task
     return columns.find((c) => c.tasks.some((t) => t.id === id));
   };
 
@@ -70,11 +68,26 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
     const activeCol = findColumn(active.id as string);
     const overCol = findColumn(over.id as string);
 
-    if (!activeCol || !overCol || activeCol.id === overCol.id) return;
+    if (!activeCol || !overCol) return;
 
+    // Same column — reorder
+    if (activeCol.id === overCol.id) {
+      setColumns((prev) =>
+        prev.map((col) => {
+          if (col.id !== activeCol.id) return col;
+          const oldIndex = col.tasks.findIndex((t) => t.id === active.id);
+          const newIndex = col.tasks.findIndex((t) => t.id === over.id);
+          if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return col;
+          return { ...col, tasks: arrayMove(col.tasks, oldIndex, newIndex) };
+        }),
+      );
+      return;
+    }
+
+    // Cross column — move task
     setColumns((prev) => {
-      const activeTask = activeCol.tasks.find((t) => t.id === active.id);
-      if (!activeTask) return prev;
+      const task = activeCol.tasks.find((t) => t.id === active.id);
+      if (!task) return prev;
 
       return prev.map((col) => {
         if (col.id === activeCol.id) {
@@ -84,7 +97,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
           const overIndex = col.tasks.findIndex((t) => t.id === over.id);
           const newTasks = [...col.tasks];
           const insertIndex = overIndex >= 0 ? overIndex : newTasks.length;
-          newTasks.splice(insertIndex, 0, { ...activeTask, columnId: col.id });
+          newTasks.splice(insertIndex, 0, { ...task, columnId: col.id });
           return { ...col, tasks: newTasks };
         }
         return col;
@@ -110,7 +123,7 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
       });
       onRefresh();
     } catch {
-      toast.error("Erreur lors du déplacement");
+      toast.error("Erreur lors du deplacement");
       onRefresh();
     }
   };
@@ -126,7 +139,10 @@ export function KanbanBoard({ project, onTaskClick, onRefresh, filterAssigneeId,
       <div className="flex h-full gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 overflow-x-auto">
         {columns.map((column) => {
           const filteredColumn = filterAssigneeId
-            ? { ...column, tasks: column.tasks.filter((t) => t.assigneeId === filterAssigneeId) }
+            ? { ...column, tasks: column.tasks.filter((t) => {
+                const ids: string[] = (t.assigneeIds as string[]) || (t.assigneeId ? [t.assigneeId] : []);
+                return ids.includes(filterAssigneeId);
+              })}
             : column;
           return (
             <KanbanColumn
