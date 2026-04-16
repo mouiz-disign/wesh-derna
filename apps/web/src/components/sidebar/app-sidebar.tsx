@@ -60,23 +60,13 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
   const [dmsOpen, setDmsOpen] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [projRes, chanRes, notifRes, dmRes, unreadRes] = await Promise.all([
-          api.get(`/workspaces/${params.workspaceId}/projects`),
-          api.get(`/workspaces/${params.workspaceId}/channels`),
-          api.get("/notifications/unread-count"),
-          api.get(`/workspaces/${params.workspaceId}/dm-conversations`),
-          api.get(`/workspaces/${params.workspaceId}/unread-counts`),
-        ]);
-        setProjects(projRes.data);
-        setChannels(chanRes.data);
-        setUnreadNotifs(notifRes.data);
-        setDmConversations(dmRes.data);
-        setUnreadCounts(unreadRes.data);
-      } catch {}
-    };
-    load();
+    if (!params.workspaceId) return;
+    // Fetch independently so one failure doesn't block the rest
+    api.get(`/workspaces/${params.workspaceId}/projects`).then(({ data }) => setProjects(data)).catch(() => {});
+    api.get(`/workspaces/${params.workspaceId}/channels`).then(({ data }) => setChannels(data)).catch(() => {});
+    api.get("/notifications/unread-count").then(({ data }) => setUnreadNotifs(data)).catch(() => {});
+    api.get(`/workspaces/${params.workspaceId}/dm-conversations`).then(({ data }) => setDmConversations(data)).catch(() => {});
+    api.get(`/workspaces/${params.workspaceId}/unread-counts`).then(({ data }) => setUnreadCounts(data)).catch(() => {});
 
     const socket = connectSocket();
     socket.on("notification:new", () => setUnreadNotifs((c) => c + 1));
