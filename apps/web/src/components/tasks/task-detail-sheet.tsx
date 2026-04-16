@@ -56,13 +56,14 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const [members, setMembers] = useState<UserPreview[]>([]);
-  const [subtasks, setSubtasks] = useState<{ id: string; title: string; done: boolean; weight: number; order: number }[]>([]);
+  const [subtasks, setSubtasks] = useState<{ id: string; title: string; done: boolean; weight: number; order: number; assigneeId?: string | null }[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [taskNotifs, setTaskNotifs] = useState<{ user: { id: string; name: string }; read: boolean; readAt: string | null; title: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingWeight, setEditingWeight] = useState(0);
+  const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [dragSubtaskId, setDragSubtaskId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
@@ -155,6 +156,7 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
       const { data } = await api.patch(`/tasks/subtasks/${subtaskId}`, {
         title: editingTitle.trim(),
         weight: editingWeight,
+        assigneeId: editingAssigneeId || null,
       });
       setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? data : s)));
       setEditingSubtaskId(null);
@@ -349,6 +351,14 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                               }}
                               className="flex-1 h-7 px-2 text-sm rounded bg-[var(--surface-low)] border-none outline-none focus:ring-1 focus:ring-[var(--primary)]/30"
                             />
+                            <select
+                              value={editingAssigneeId || ""}
+                              onChange={(e) => setEditingAssigneeId(e.target.value || null)}
+                              className="h-7 px-1 text-[10px] rounded bg-[var(--surface-low)] border-none outline-none cursor-pointer"
+                            >
+                              <option value="">—</option>
+                              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                            </select>
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
@@ -378,8 +388,17 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                                 {st.weight}%
                               </span>
                             )}
+                            {st.assigneeId && (() => {
+                              const stMember = members.find((m) => m.id === st.assigneeId);
+                              const stInit = stMember?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                              return stMember ? (
+                                <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[7px] font-bold text-white shrink-0" title={stMember.name}>
+                                  {stInit}
+                                </div>
+                              ) : null;
+                            })()}
                             <button
-                              onClick={() => { setEditingSubtaskId(st.id); setEditingTitle(st.title); setEditingWeight(st.weight || 0); }}
+                              onClick={() => { setEditingSubtaskId(st.id); setEditingTitle(st.title); setEditingWeight(st.weight || 0); setEditingAssigneeId(st.assigneeId || null); }}
                               className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all"
                             >
                               <Pencil className="h-3 w-3" />
@@ -502,29 +521,69 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                   </div>
                 </div>
 
-                {/* Assignee */}
+                {/* Assignees (multi) */}
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2 block">
-                    Assigne a
+                    Assignes
                   </label>
-                  {assignee && (
-                    <div className="flex items-center gap-2.5 mb-2 p-2 rounded-lg bg-[var(--background)]">
-                      <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[11px] font-bold text-white shrink-0">
-                        {initials}
-                      </div>
-                      <p className="text-sm font-semibold truncate flex-1">{assignee.name}</p>
+                  {/* Current assignees */}
+                  {(task.assignees || (task.assignee ? [task.assignee] : [])).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {(task.assignees || (task.assignee ? [task.assignee] : [])).map((a: any) => {
+                        const ai = a.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                        return (
+                          <div key={a.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[var(--background)] text-xs">
+                            <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white">{ai}</div>
+                            <span className="font-medium">{a.name}</span>
+                            <button
+                              onClick={async () => {
+                                const currentIds: string[] = (task.assigneeIds as string[]) || [];
+                                const newIds = currentIds.filter((id: string) => id !== a.id);
+                                try {
+                                  const { data } = await api.put(`/tasks/${taskId}`, { assigneeIds: newIds, assigneeId: newIds[0] || null });
+                                  setTask((prev) => prev ? { ...prev, ...data, assignees: undefined } : null);
+                                  // Refetch to get resolved assignees
+                                  const { data: fresh } = await api.get(`/tasks/${taskId}`);
+                                  setTask((prev) => prev ? { ...prev, ...fresh } : null);
+                                  onUpdated();
+                                } catch { toast.error("Erreur"); }
+                              }}
+                              className="text-[var(--muted-foreground)] hover:text-red-500"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                  <select
-                    value={task.assigneeId || ""}
-                    onChange={(e) => updateField("assigneeId", e.target.value || null)}
-                    className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--background)] border border-[var(--border)] cursor-pointer focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
-                  >
-                    <option value="">Non assigne</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                  {/* Add member dropdown */}
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {members.filter((m) => !((task.assigneeIds as string[]) || []).includes(m.id)).map((m) => {
+                      const mi = m.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={async () => {
+                            const currentIds: string[] = (task.assigneeIds as string[]) || [];
+                            const newIds = [...currentIds, m.id];
+                            try {
+                              const { data } = await api.put(`/tasks/${taskId}`, { assigneeIds: newIds, assigneeId: newIds[0] });
+                              setTask((prev) => prev ? { ...prev, ...data, assignees: undefined } : null);
+                              const { data: fresh } = await api.get(`/tasks/${taskId}`);
+                              setTask((prev) => prev ? { ...prev, ...fresh } : null);
+                              onUpdated();
+                            } catch { toast.error("Erreur"); }
+                          }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-[var(--surface-high)] transition-colors"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-[var(--surface-high)] flex items-center justify-center text-[8px] font-bold text-[var(--muted-foreground)]">{mi}</div>
+                          <span>{m.name}</span>
+                          <Plus className="h-3 w-3 ml-auto text-[var(--muted-foreground)]" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Deadline */}

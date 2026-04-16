@@ -31,11 +31,23 @@ export class TasksService {
     });
   }
 
+  private async resolveAssignees(task: any) {
+    const ids = (task.assigneeIds as string[]) || [];
+    if (ids.length === 0) return { ...task, assignees: task.assignee ? [task.assignee] : [] };
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, avatar: true },
+    });
+    return { ...task, assignees: users };
+  }
+
   async create(dto: CreateTaskDto) {
     const maxOrder = await this.prisma.task.aggregate({
       where: { columnId: dto.columnId },
       _max: { order: true },
     });
+
+    const ids = dto.assigneeIds || (dto.assigneeId ? [dto.assigneeId] : []);
 
     const task = await this.prisma.task.create({
       data: {
@@ -45,7 +57,8 @@ export class TasksService {
         deadline: dto.deadline ? new Date(dto.deadline) : null,
         columnId: dto.columnId,
         projectId: dto.projectId,
-        assigneeId: dto.assigneeId,
+        assigneeId: dto.assigneeId || ids[0] || null,
+        assigneeIds: ids as any,
         order: (maxOrder._max.order ?? -1) + 1,
       },
       include: {
@@ -86,7 +99,7 @@ export class TasksService {
   }
 
   async findById(id: string) {
-    const task = await this.prisma.task.findUnique({
+    const raw = await this.prisma.task.findUnique({
       where: { id },
       include: {
         assignee: { select: { id: true, name: true, avatar: true } },
@@ -99,8 +112,8 @@ export class TasksService {
         },
       },
     });
-    if (!task) throw new NotFoundException('Tache non trouvee');
-    return task;
+    if (!raw) throw new NotFoundException('Tache non trouvee');
+    return this.resolveAssignees(raw);
   }
 
   async update(id: string, dto: UpdateTaskDto) {
@@ -247,7 +260,7 @@ export class TasksService {
     });
   }
 
-  async updateSubtask(subtaskId: string, data: { title?: string; weight?: number }) {
+  async updateSubtask(subtaskId: string, data: { title?: string; weight?: number; assigneeId?: string | null }) {
     return this.prisma.subtask.update({
       where: { id: subtaskId },
       data,

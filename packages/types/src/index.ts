@@ -105,10 +105,12 @@ export interface Task {
   columnId: string;
   projectId: string;
   assigneeId: string | null;
+  assigneeIds: string[];
   assignee: UserPreview | null;
+  assignees?: UserPreview[];
   tags: Tag[];
   createdAt: string;
-  subtasks?: { id: string; title: string; done: boolean; weight?: number; order?: number }[];
+  subtasks?: { id: string; title: string; done: boolean; weight?: number; order?: number; assigneeId?: string | null }[];
   attachments?: Attachment[];
   _count?: { comments: number; subtasks?: number; attachments?: number };
 }

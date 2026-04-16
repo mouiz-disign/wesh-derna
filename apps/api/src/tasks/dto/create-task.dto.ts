@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MinLength, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 enum Priority {
@@ -41,4 +41,9 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   assigneeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  assigneeIds?: string[];
 }

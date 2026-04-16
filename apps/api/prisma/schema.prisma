@@ -135,6 +135,7 @@ model Task {
   columnId     String
   projectId    String
   assigneeId   String?
+  assigneeIds  Json      @default("[]")
   createdAt    DateTime  @default(now())
 
   column   Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -163,12 +164,13 @@ model Attachment {
 }
 
 model Subtask {
-  id        String  @id @default(cuid())
-  title     String
-  done      Boolean @default(false)
-  order     Int     @default(0)
-  weight    Int     @default(0)
-  taskId    String
+  id         String  @id @default(cuid())
+  title      String
+  done       Boolean @default(false)
+  order      Int     @default(0)
+  weight     Int     @default(0)
+  taskId     String
+  assigneeId String?
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 

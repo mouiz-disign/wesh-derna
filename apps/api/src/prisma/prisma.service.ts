@@ -54,6 +54,8 @@ export class PrismaService
       await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "parentId" TEXT REFERENCES messages(id) ON DELETE CASCADE;`);
       await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "readBy" JSONB DEFAULT '[]';`);
       await this.$executeRawUnsafe(`ALTER TABLE subtasks ADD COLUMN IF NOT EXISTS "weight" INTEGER DEFAULT 0;`);
+      await this.$executeRawUnsafe(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "assigneeIds" JSONB DEFAULT '[]';`);
+      await this.$executeRawUnsafe(`ALTER TABLE subtasks ADD COLUMN IF NOT EXISTS "assigneeId" TEXT;`);
       await this.$executeRawUnsafe(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "readAt" TIMESTAMP(3);`);
       await this.$executeRawUnsafe(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "projectId" TEXT;`);
       await this.$executeRawUnsafe(`

@@ -66,15 +66,20 @@ export function KanbanCard({ task, onTaskClick, overlay, members = [], onRefresh
   const hasVoice = !!task.voiceNoteUrl;
   const hasIndicators = subtasksTotal > 0 || commentsCount > 0 || attachmentsCount > 0 || hasVoice;
 
-  const handleAssign = async (userId: string | null) => {
+  const currentAssigneeIds: string[] = (task.assigneeIds as string[]) || (task.assigneeId ? [task.assigneeId] : []);
+
+  const handleToggleAssign = async (userId: string) => {
+    const isAssigned = currentAssigneeIds.includes(userId);
+    const newIds = isAssigned
+      ? currentAssigneeIds.filter((id) => id !== userId)
+      : [...currentAssigneeIds, userId];
     try {
-      await api.put(`/tasks/${task.id}`, { assigneeId: userId });
-      toast.success(userId ? "Membre assigne" : "Assignation retiree");
+      await api.put(`/tasks/${task.id}`, { assigneeIds: newIds, assigneeId: newIds[0] || null });
+      toast.success(isAssigned ? "Retire" : "Assigne");
       onRefresh?.();
     } catch {
       toast.error("Erreur");
     }
-    setShowAssignMenu(false);
   };
 
   return (
@@ -174,81 +179,69 @@ export function KanbanCard({ task, onTaskClick, overlay, members = [], onRefresh
           )}
         </div>
 
-        {/* Assignee + quick assign */}
-        <div className="relative flex items-center gap-1.5">
-          {task.assignee ? (
-            <div
-              className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-[var(--surface-lowest)]"
-              title={task.assignee.name}
-            >
-              {initials}
-            </div>
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-[var(--surface-high)] border-2 border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center">
-              <span className="text-[10px] text-[var(--muted-foreground)]">?</span>
-            </div>
-          )}
+        {/* Assignees + quick assign */}
+        <div className="relative flex items-center">
+          {/* Avatar stack */}
+          <div className="flex -space-x-1.5">
+            {currentAssigneeIds.length > 0 ? (
+              <>
+                {currentAssigneeIds.slice(0, 3).map((id) => {
+                  const m = members.find((mem) => mem.id === id);
+                  const mi = m?.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+                  return (
+                    <div key={id} className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white ring-1 ring-white dark:ring-[var(--surface-lowest)]" title={m?.name}>
+                      {mi}
+                    </div>
+                  );
+                })}
+                {currentAssigneeIds.length > 3 && (
+                  <div className="w-6 h-6 rounded-full bg-[var(--surface-high)] flex items-center justify-center text-[8px] font-bold text-[var(--muted-foreground)] ring-1 ring-white dark:ring-[var(--surface-lowest)]">
+                    +{currentAssigneeIds.length - 3}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-[var(--surface-high)] border border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center">
+                <span className="text-[9px] text-[var(--muted-foreground)]">?</span>
+              </div>
+            )}
+          </div>
 
           {/* Quick assign button */}
           {members.length > 0 && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAssignMenu(!showAssignMenu);
-              }}
-              className="w-6 h-6 rounded-full bg-[var(--surface-high)] border border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
-              title="Assigner un membre"
+              onClick={(e) => { e.stopPropagation(); setShowAssignMenu(!showAssignMenu); }}
+              className="w-5 h-5 rounded-full bg-[var(--surface-high)] border border-dashed border-[var(--muted-foreground)]/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 ml-1"
+              title="Assigner"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-2.5 w-2.5" />
             </button>
           )}
 
-          {/* Quick assign dropdown */}
+          {/* Multi-assign dropdown */}
           {showAssignMenu && (
-            <div
-              className="absolute bottom-full right-0 mb-2 w-48 bg-[var(--surface-lowest)] rounded-xl shadow-xl border border-[var(--border)] py-1.5 z-50"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="absolute bottom-full right-0 mb-2 w-48 bg-[var(--surface-lowest)] rounded-xl shadow-xl border border-[var(--border)] py-1.5 z-50" onClick={(e) => e.stopPropagation()}>
               <div className="px-3 py-1.5 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Assigner
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowAssignMenu(false); }}
-                  className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--on-surface)]"
-                >
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Assigner</span>
+                <button onClick={(e) => { e.stopPropagation(); setShowAssignMenu(false); }} className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--on-surface)]">
                   <X className="h-3 w-3" />
                 </button>
               </div>
-
-              {task.assigneeId && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleAssign(null); }}
-                  className="w-full px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                >
-                  Retirer l&apos;assignation
-                </button>
-              )}
-
               <div className="max-h-40 overflow-y-auto">
                 {members.map((m) => {
                   const mInitials = m.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-                  const isActive = task.assigneeId === m.id;
+                  const isAssigned = currentAssigneeIds.includes(m.id);
                   return (
                     <button
                       key={m.id}
-                      onClick={(e) => { e.stopPropagation(); handleAssign(m.id); }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[var(--surface-low)] transition-colors ${
-                        isActive ? "bg-[var(--primary)]/5 font-bold" : ""
-                      }`}
+                      onClick={(e) => { e.stopPropagation(); handleToggleAssign(m.id); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[var(--surface-low)] transition-colors ${isAssigned ? "bg-[var(--primary)]/5" : ""}`}
                     >
-                      <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white shrink-0">
-                        {mInitials}
+                      <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 ${isAssigned ? "bg-[var(--primary)] border-[var(--primary)] text-white" : "border-[var(--muted-foreground)]/40"}`}>
+                        {isAssigned && <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                       </div>
+                      <div className="w-5 h-5 rounded-full gradient-primary flex items-center justify-center text-[8px] font-bold text-white shrink-0">{mInitials}</div>
                       <span className="truncate">{m.name}</span>
-                      {isActive && (
-                        <span className="ml-auto text-[var(--primary)] text-[10px]">●</span>
-                      )}
                     </button>
                   );
                 })}
