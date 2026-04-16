@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
+import { playNotifSound, playMessageSound } from "@/lib/sounds";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
@@ -69,7 +70,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
     api.get(`/workspaces/${params.workspaceId}/unread-counts`).then(({ data }) => setUnreadCounts(data)).catch(() => {});
 
     const socket = connectSocket();
-    socket.on("notification:new", () => setUnreadNotifs((c) => c + 1));
+    socket.on("notification:new", () => { setUnreadNotifs((c) => c + 1); playNotifSound(); });
     socket.emit("presence:get");
     socket.on("presence:list", (data: { onlineUserIds: string[] }) => {
       setOnlineUsers(new Set(data.onlineUserIds));
@@ -86,6 +87,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
     socket.on("dm:new", (data: { message: { authorId: string } }) => {
       const fromId = data.message.authorId;
       if (!pathname.includes(`/dm/${fromId}`)) {
+        playMessageSound();
         setUnreadCounts((prev) => ({
           ...prev,
           dms: { ...prev.dms, [fromId]: (prev.dms[fromId] || 0) + 1 },

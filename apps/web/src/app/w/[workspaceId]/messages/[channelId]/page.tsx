@@ -10,6 +10,7 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { Hash, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { playMessageSound } from "@/lib/sounds";
 import type { Message, Channel } from "@repo/types";
 
 export default function ChannelPage() {
@@ -52,8 +53,8 @@ export default function ChannelPage() {
       if (data.message.channelId === channelId) {
         setMessages((prev) => [...prev, data.message]);
         api.post(`/channels/${channelId}/read`).catch(() => {});
-        // Mark as read immediately
         if (data.message.authorId !== user?.id) {
+          playMessageSound();
           socket.emit("message:mark-read", { messageIds: [data.message.id], channelId });
         }
       }

@@ -11,6 +11,7 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { playMessageSound } from "@/lib/sounds";
 import type { Message } from "@repo/types";
 
 export default function DMPage() {
@@ -60,8 +61,8 @@ export default function DMPage() {
         if (isOurDM) {
           setMessages((prev) => [...prev, data.message]);
           api.post(`/dm/${otherUserId}/read`).catch(() => {});
-          // Mark read receipt
           if (data.message.authorId !== currentUser?.id) {
+            playMessageSound();
             socket.emit("message:mark-read", { messageIds: [data.message.id], dmUserId: otherUserId });
           }
         }

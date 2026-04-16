@@ -13,6 +13,7 @@ import {
   UserPlus,
   Clock,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -23,6 +24,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   "task.created": Plus,
   "task.commented": MessageSquare,
   "task.deadline": Clock,
+  "task.overdue": AlertTriangle,
 };
 
 export default function NotificationsPage() {
