@@ -190,7 +190,7 @@ export class TasksService {
       });
       await this.prisma.comment.create({
         data: {
-          content: `📋 ${mover?.name || 'Quelqu\'un'} a deplace cette tache de "${fromColumn}" vers "${toColumn}"`,
+          content: `${mover?.name?.split(' ')[0] || '?'} : ${fromColumn} → ${toColumn}`,
           taskId: id,
           authorId: userId,
         },

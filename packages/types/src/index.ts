@@ -112,6 +112,7 @@ export interface Task {
   createdAt: string;
   subtasks?: { id: string; title: string; done: boolean; weight?: number; order?: number; assigneeId?: string | null }[];
   attachments?: Attachment[];
+  lastComment?: { content: string; createdAt: string } | null;
   _count?: { comments: number; subtasks?: number; attachments?: number };
 }
 

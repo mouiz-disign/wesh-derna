@@ -71,6 +71,7 @@ export class ProjectsService {
                 tags: true,
                 _count: { select: { comments: true, subtasks: true, attachments: true } },
                 subtasks: { select: { id: true, title: true, done: true, weight: true, order: true, assigneeId: true }, orderBy: { order: 'asc' } },
+                comments: { orderBy: { createdAt: 'desc' }, take: 1, select: { content: true, createdAt: true } },
               },
             },
           },
@@ -78,7 +79,19 @@ export class ProjectsService {
       },
     });
     if (!project) throw new NotFoundException('Projet non trouvé');
-    return project;
+
+    // Transform comments[0] into lastComment for each task
+    const transformed = {
+      ...project,
+      columns: project.columns.map((col) => ({
+        ...col,
+        tasks: col.tasks.map((task) => {
+          const { comments, ...rest } = task;
+          return { ...rest, lastComment: comments[0] || null };
+        }),
+      })),
+    };
+    return transformed;
   }
 
   async findById(id: string, userId: string) {

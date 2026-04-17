@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic, Paperclip, Plus, X } from "lucide-react";
+import { MessageSquare, Calendar, GripVertical, CheckSquare, Mic, Paperclip, Plus, X, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { api } from "@/lib/api";
@@ -159,6 +159,14 @@ export function KanbanCard({ task, onTaskClick, overlay, members = [], onRefresh
               {commentsCount}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Last activity */}
+      {task.lastComment?.content?.includes("→") && (
+        <div className="flex items-center gap-1.5 mb-2 px-2 py-1 rounded-md bg-[var(--surface-low)] text-[10px] text-[var(--muted-foreground)]">
+          <ArrowRightLeft className="h-3 w-3 shrink-0" />
+          <span className="truncate">{task.lastComment.content}</span>
         </div>
       )}
 
