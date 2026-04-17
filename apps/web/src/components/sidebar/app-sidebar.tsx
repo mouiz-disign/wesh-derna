@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -261,7 +260,10 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
 
       <div className="h-px bg-[#2d3044] mx-3 mb-2" />
 
-      <ScrollArea className="flex-1 px-2">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 pb-4"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         {/* Espace */}
         <div className="px-1 mb-2">
           <div className="flex items-center justify-between px-2 py-1">
@@ -425,7 +427,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Bottom */}
       <div className="border-t border-[#2d3044] px-3 py-2">
