@@ -19,8 +19,11 @@ import {
   ChevronLeft,
   Mic,
   Square,
+  Link2,
+  Trash2,
 } from "lucide-react";
 import { VoiceNotesDrawer } from "@/components/projects/voice-notes-drawer";
+import { VoicePlayer } from "@/components/tasks/voice-recorder";
 import { toast } from "sonner";
 import {
   addDays,
@@ -34,9 +37,9 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ProjectInviteDialog } from "@/components/projects/project-invite-dialog";
-import type { Project, Task, WorkspaceMember, ProjectMember } from "@repo/types";
+import type { Project, Task, Column, WorkspaceMember, ProjectMember } from "@repo/types";
 
-type ViewMode = "board" | "table" | "gantt";
+type ViewMode = "board" | "table" | "gantt" | "vocal";
 
 const priorityLabels: Record<string, string> = { LOW: "Basse", MEDIUM: "Moyenne", HIGH: "Haute", URGENT: "Urgente" };
 const priorityBadge: Record<string, string> = {
@@ -202,6 +205,7 @@ export default function ProjectPage() {
           <TabBtn icon={Kanban} label="Kanban" active={viewMode === "board"} onClick={() => setViewMode("board")} />
           <TabBtn icon={Table2} label="Tableau" active={viewMode === "table"} onClick={() => setViewMode("table")} />
           <TabBtn icon={GanttChart} label="Gantt" active={viewMode === "gantt"} onClick={() => setViewMode("gantt")} />
+          <TabBtn icon={Mic} label="Vocal" active={viewMode === "vocal"} onClick={() => setViewMode("vocal")} badge={voiceNoteCount} />
         </div>
 
         {/* Actions */}
@@ -253,6 +257,7 @@ export default function ProjectPage() {
         )}
         {viewMode === "table" && <TableView project={project} onTaskClick={(id) => setSelectedTaskId(id)} />}
         {viewMode === "gantt" && <GanttView project={project} weekOffset={weekOffset} onTaskClick={(id) => setSelectedTaskId(id)} />}
+        {viewMode === "vocal" && <VocalView projectId={params.projectId as string} columns={project.columns} onRefresh={fetchProject} onNoteCountChange={setVoiceNoteCount} />}
       </div>
 
       <TaskDetailSheet taskId={selectedTaskId} open={!!selectedTaskId} onOpenChange={(open) => !open && setSelectedTaskId(null)} onUpdated={fetchProject} />
@@ -307,7 +312,7 @@ export default function ProjectPage() {
 }
 
 /* ── Tab Button ── */
-function TabBtn({ icon: Icon, label, active, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; active: boolean; onClick: () => void }) {
+function TabBtn({ icon: Icon, label, active, onClick, badge }: { icon: React.ComponentType<{ className?: string }>; label: string; active: boolean; onClick: () => void; badge?: number }) {
   return (
     <button
       onClick={onClick}
@@ -315,6 +320,9 @@ function TabBtn({ icon: Icon, label, active, onClick }: { icon: React.ComponentT
     >
       <Icon className="h-4 w-4" />
       {label}
+      {badge !== undefined && badge > 0 && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{badge}</span>
+      )}
     </button>
   );
 }
@@ -527,6 +535,168 @@ function GanttView({ project, weekOffset, onTaskClick }: { project: Project; wee
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ── Vocal View (inline tab) ── */
+function VocalView({ projectId, columns, onRefresh, onNoteCountChange }: { projectId: string; columns: Column[]; onRefresh: () => void; onNoteCountChange: (n: number) => void }) {
+  const [notes, setNotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "free" | "linked">("all");
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [convertForm, setConvertForm] = useState({ title: "", columnId: "", priority: "MEDIUM" });
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+  const fetchNotes = async () => {
+    try {
+      const { data } = await api.get(`/projects/${projectId}/voice-notes`);
+      setNotes(data);
+      onNoteCountChange(data.filter((n: any) => !n.taskId).length);
+    } catch {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchNotes(); }, [projectId]);
+
+  const allTasks = columns.flatMap((c) => c.tasks);
+  const filtered = notes.filter((n) => {
+    if (filter === "free") return !n.taskId;
+    if (filter === "linked") return !!n.taskId;
+    return true;
+  });
+
+  const handleConvert = async (noteId: string) => {
+    if (!convertForm.title.trim() || !convertForm.columnId) return;
+    try {
+      await api.post(`/voice-notes/${noteId}/convert`, convertForm);
+      toast.success("Tache creee");
+      setConvertingId(null);
+      fetchNotes();
+      onRefresh();
+    } catch { toast.error("Erreur"); }
+  };
+
+  const handleLink = async (noteId: string, taskId: string) => {
+    try {
+      await api.patch(`/voice-notes/${noteId}/link`, { taskId });
+      toast.success("Note rattachee");
+      setLinkingId(null);
+      fetchNotes();
+    } catch { toast.error("Erreur"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/voice-notes/${id}`);
+      setNotes((p) => p.filter((n) => n.id !== id));
+      toast.success("Supprimee");
+    } catch { toast.error("Erreur"); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-[var(--muted-foreground)]" /></div>;
+
+  return (
+    <div className="h-full overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <Mic className="h-5 w-5 text-[var(--primary)]" />
+          Notes vocales
+          <span className="text-sm font-normal text-[var(--muted-foreground)]">{notes.length}</span>
+        </h2>
+        <div className="flex gap-1.5">
+          {(["all", "free", "linked"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${filter === f ? "bg-[var(--primary)] text-white" : "bg-[var(--surface-low)] text-[var(--muted-foreground)]"}`}>
+              {f === "all" ? "Toutes" : f === "free" ? "Non traitees" : "Traitees"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-[var(--muted-foreground)]">
+          <Mic className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm">{filter === "free" ? "Aucune note en attente" : "Aucune note vocale"}</p>
+          <p className="text-xs mt-1">Appuyez sur le bouton micro pour enregistrer</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((note: any) => {
+            const initials = note.author?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+            return (
+              <div key={note.id} className={`rounded-xl border p-4 transition-all ${note.taskId ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-900/10" : "border-[var(--border)] bg-[var(--surface-lowest)]"}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-[10px] font-bold text-white">{initials}</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{note.author?.name}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">
+                      {new Date(note.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <button onClick={() => handleDelete(note.id)} className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Audio player - reuse VoicePlayer */}
+                <div className="mb-3">
+                  <VoicePlayer src={`${API_URL}${note.url}`} />
+                </div>
+
+                {note.task ? (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg">
+                    <Link2 className="h-3.5 w-3.5" />
+                    Liee a : <span className="font-semibold">{note.task.title}</span>
+                  </div>
+                ) : convertingId === note.id ? (
+                  <div className="space-y-2 p-3 bg-[var(--surface-low)] rounded-lg">
+                    <input autoFocus value={convertForm.title} onChange={(e) => setConvertForm((p) => ({ ...p, title: e.target.value }))}
+                      placeholder="Titre de la tache..." className="w-full h-9 px-3 text-sm rounded-lg bg-[var(--background)] border border-[var(--border)] outline-none focus:ring-1 focus:ring-[var(--primary)]/30" />
+                    <div className="flex gap-2">
+                      <select value={convertForm.columnId} onChange={(e) => setConvertForm((p) => ({ ...p, columnId: e.target.value }))}
+                        className="flex-1 h-9 px-2 text-sm rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                        <option value="">Colonne...</option>
+                        {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <select value={convertForm.priority} onChange={(e) => setConvertForm((p) => ({ ...p, priority: e.target.value }))}
+                        className="h-9 px-2 text-sm rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                        <option value="LOW">Basse</option>
+                        <option value="MEDIUM">Moyenne</option>
+                        <option value="HIGH">Haute</option>
+                        <option value="URGENT">Urgente</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleConvert(note.id)} disabled={!convertForm.title.trim() || !convertForm.columnId}
+                        className="flex-1 h-9 gradient-primary text-white rounded-lg text-sm font-bold disabled:opacity-40">Creer la tache</button>
+                      <button onClick={() => setConvertingId(null)} className="h-9 px-4 text-sm rounded-lg bg-[var(--background)] border border-[var(--border)]">Annuler</button>
+                    </div>
+                  </div>
+                ) : linkingId === note.id ? (
+                  <div className="p-2 bg-[var(--surface-low)] rounded-lg max-h-40 overflow-y-auto space-y-0.5">
+                    {allTasks.map((t) => (
+                      <button key={t.id} onClick={() => handleLink(note.id, t.id)} className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[var(--surface-high)] truncate transition-colors">{t.title}</button>
+                    ))}
+                    <button onClick={() => setLinkingId(null)} className="w-full text-center text-xs text-[var(--muted-foreground)] py-2">Annuler</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button onClick={() => { setConvertingId(note.id); setConvertForm({ title: "", columnId: columns[0]?.id || "", priority: "MEDIUM" }); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-sm font-semibold gradient-primary text-white">
+                      <Plus className="h-4 w-4" /> Creer une tache
+                    </button>
+                    <button onClick={() => setLinkingId(note.id)}
+                      className="flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg text-sm font-medium bg-[var(--surface-low)] hover:bg-[var(--surface-high)] transition-colors">
+                      <Link2 className="h-3.5 w-3.5" /> Rattacher
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
