@@ -78,6 +78,13 @@ export default function LoginPage() {
           ) : null}
           Se connecter
         </Button>
+
+        <Link
+          href="/forgot-password"
+          className="text-center text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          Mot de passe oublie ?
+        </Link>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">

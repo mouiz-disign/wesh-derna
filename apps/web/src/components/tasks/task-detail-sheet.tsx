@@ -24,6 +24,7 @@ import {
   Eye,
   Check,
   CheckCheck,
+  Save,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -128,6 +129,23 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
     toast.success("Tache supprimee");
     onOpenChange(false);
     onUpdated();
+  };
+
+  const handleSaveAndClose = async () => {
+    if (!taskId || !task) return;
+    const payload: Record<string, string | null> = {};
+    if (title.trim() && title !== task.title) payload.title = title.trim();
+    if (description !== (task.description || "")) payload.description = description;
+    try {
+      if (Object.keys(payload).length > 0) {
+        await api.put(`/tasks/${taskId}`, payload);
+        onUpdated();
+      }
+      toast.success("Modifications enregistrees");
+      onOpenChange(false);
+    } catch {
+      toast.error("Erreur enregistrement");
+    }
   };
 
   const handleAddSubtask = async () => {
@@ -651,6 +669,15 @@ export function TaskDetailSheet({ taskId, open, onOpenChange, onUpdated }: Props
                     </div>
                   </div>
                 )}
+
+                {/* Save */}
+                <button
+                  onClick={handleSaveAndClose}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white gradient-primary hover:shadow-md transition-all"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Valider
+                </button>
 
                 {/* Delete */}
                 <button

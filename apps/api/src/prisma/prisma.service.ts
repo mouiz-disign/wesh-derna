@@ -81,6 +81,9 @@ export class PrismaService
       await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;`);
       await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
       await this.$executeRawUnsafe(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "fileMimeType" TEXT;`);
+      await this.$executeRawUnsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "passwordResetToken" TEXT;`);
+      await this.$executeRawUnsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "passwordResetExpiresAt" TIMESTAMP(3);`);
+      await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS users_passwordResetToken_key ON users("passwordResetToken");`);
       this.logger.log('Database migrations checked');
     } catch (err) {
       this.logger.warn('Migration check failed (non-critical): ' + err);

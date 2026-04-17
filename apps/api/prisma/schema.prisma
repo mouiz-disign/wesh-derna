@@ -30,6 +30,8 @@ model User {
   password  String
   poste     String?
   fonction  String?
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
   createdAt DateTime @default(now())
 
   memberships        WorkspaceMember[]
