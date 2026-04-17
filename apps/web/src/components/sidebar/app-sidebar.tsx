@@ -22,7 +22,9 @@ import {
   Settings,
   ClipboardList,
   Calendar,
+  Check,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -59,6 +61,26 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [channelsOpen, setChannelsOpen] = useState(true);
   const [dmsOpen, setDmsOpen] = useState(true);
+  const allWorkspaces = useWorkspaceStore((s) => s.workspaces);
+  const setAllWorkspaces = useWorkspaceStore((s) => s.setWorkspaces);
+  const [creatingWs, setCreatingWs] = useState(false);
+  const [newWsName, setNewWsName] = useState("");
+
+  useEffect(() => {
+    api.get("/workspaces").then(({ data }) => setAllWorkspaces(data)).catch(() => {});
+  }, [setAllWorkspaces]);
+
+  const handleCreateWorkspace = async () => {
+    if (!newWsName.trim()) return;
+    try {
+      const { data } = await api.post("/workspaces", { name: newWsName.trim() });
+      setAllWorkspaces([...allWorkspaces, data]);
+      setNewWsName("");
+      setCreatingWs(false);
+      toast.success("Workspace cree");
+      router.push(`/w/${data.id}`);
+    } catch { toast.error("Erreur"); }
+  };
 
   useEffect(() => {
     if (!params.workspaceId) return;
@@ -128,17 +150,85 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
 
   return (
     <aside className={`h-full flex flex-col bg-[#1a1d2e] text-[#c8cad8] ${mobile ? "w-full" : "w-64 fixed left-0 top-0 z-50"}`}>
-      {/* Brand + Avatar */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">W</span>
-          </div>
-          <span className="text-base font-bold text-white tracking-tight">
-            {workspace?.name || "Wesh Derna"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Brand + Workspace switcher + Avatar */}
+      <div className="flex items-center justify-between px-3 py-3 gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 rounded-lg hover:bg-[#252839] transition-colors group">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shrink-0">
+              <span className="text-white text-xs font-bold">
+                {(workspace?.name || "W").charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <span className="text-sm font-bold text-white tracking-tight truncate flex-1 text-left">
+              {workspace?.name || "Wesh Derna"}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 text-[#8b8da0] group-hover:text-white shrink-0" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 p-1">
+            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Tes workspaces
+            </div>
+            {allWorkspaces.map((ws) => {
+              const isCurrent = ws.id === workspace?.id;
+              return (
+                <DropdownMenuItem
+                  key={ws.id}
+                  onSelect={() => router.push(`/w/${ws.id}`)}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shrink-0">
+                    <span className="text-white text-[10px] font-bold">{ws.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span className="flex-1 text-sm truncate">{ws.name}</span>
+                  {isCurrent && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+                </DropdownMenuItem>
+              );
+            })}
+            {allWorkspaces.length === 0 && (
+              <div className="px-2 py-2 text-xs text-muted-foreground">Aucun workspace</div>
+            )}
+            <div className="h-px bg-border my-1" />
+            {creatingWs ? (
+              <div className="p-2 space-y-2">
+                <input
+                  autoFocus
+                  value={newWsName}
+                  onChange={(e) => setNewWsName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreateWorkspace();
+                    if (e.key === "Escape") { setCreatingWs(false); setNewWsName(""); }
+                  }}
+                  placeholder="Nom du workspace..."
+                  className="w-full h-8 px-2 text-xs rounded bg-[var(--surface-low)] border-none outline-none focus:ring-1 focus:ring-[var(--primary)]/30"
+                />
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleCreateWorkspace}
+                    disabled={!newWsName.trim()}
+                    className="flex-1 h-7 text-xs gradient-primary text-white rounded font-bold disabled:opacity-40"
+                  >
+                    Creer
+                  </button>
+                  <button
+                    onClick={() => { setCreatingWs(false); setNewWsName(""); }}
+                    className="h-7 px-2 text-xs rounded bg-[var(--surface-low)]"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <DropdownMenuItem
+                onSelect={(e) => { e.preventDefault(); setCreatingWs(true); }}
+                className="flex items-center gap-2 cursor-pointer text-[var(--primary)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="text-sm font-medium">Nouveau workspace</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-1.5 rounded-lg text-[#8b8da0] hover:text-white hover:bg-[#252839] transition-colors"
