@@ -1,11 +1,17 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ChatGateway } from '../gateways/chat.gateway';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+    private gateway: ChatGateway,
+  ) {}
 
   async create(workspaceId: string, dto: CreateProjectDto, userId: string) {
     const project = await this.prisma.project.create({
@@ -324,6 +330,87 @@ export class ProjectsService {
     });
 
     return this.findByIdInternal(projectId);
+  }
+
+  // ── Voice Notes ──
+
+  async createVoiceNote(projectId: string, authorId: string, file: { url: string; duration: number }) {
+    const note = await this.prisma.voiceNote.create({
+      data: { url: file.url, duration: file.duration, projectId, authorId },
+      include: { author: { select: { id: true, name: true, avatar: true } } },
+    });
+
+    // Notify project members
+    const recipients = await this.notifications.getNotifRecipients(projectId, authorId);
+    const author = await this.prisma.user.findUnique({ where: { id: authorId }, select: { name: true } });
+    for (const userId of recipients) {
+      const notif = await this.notifications.create({
+        userId,
+        type: 'voice.note',
+        title: 'Nouveau message vocal',
+        message: `${author?.name || '?'} a laisse une note vocale`,
+        link: `/projects/${projectId}`,
+        projectId,
+      });
+      this.gateway.emitToUser(userId, 'notification:new', { notification: notif });
+    }
+
+    return note;
+  }
+
+  async getVoiceNotes(projectId: string) {
+    return this.prisma.voiceNote.findMany({
+      where: { projectId },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        task: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteVoiceNote(id: string) {
+    return this.prisma.voiceNote.delete({ where: { id } });
+  }
+
+  async convertVoiceNoteToTask(voiceNoteId: string, dto: { title: string; columnId: string; priority?: string; assigneeIds?: string[]; deadline?: string }) {
+    const note = await this.prisma.voiceNote.findUnique({ where: { id: voiceNoteId } });
+    if (!note) throw new NotFoundException('Note vocale non trouvee');
+
+    const maxOrder = await this.prisma.task.aggregate({
+      where: { columnId: dto.columnId },
+      _max: { order: true },
+    });
+
+    const task = await this.prisma.task.create({
+      data: {
+        title: dto.title,
+        voiceNoteUrl: note.url,
+        columnId: dto.columnId,
+        projectId: note.projectId,
+        priority: (dto.priority as any) || 'MEDIUM',
+        assigneeId: dto.assigneeIds?.[0] || null,
+        assigneeIds: (dto.assigneeIds || []) as any,
+        deadline: dto.deadline ? new Date(dto.deadline) : null,
+        order: (maxOrder._max.order ?? -1) + 1,
+      },
+    });
+
+    // Link the voice note to the task
+    await this.prisma.voiceNote.update({
+      where: { id: voiceNoteId },
+      data: { taskId: task.id },
+    });
+
+    return task;
+  }
+
+  async linkVoiceNoteToTask(voiceNoteId: string, taskId: string) {
+    return this.prisma.voiceNote.update({
+      where: { id: voiceNoteId },
+      data: { taskId },
+      include: { task: { select: { id: true, title: true } } },
+    });
   }
 
   async getStats(workspaceId: string) {

@@ -56,6 +56,17 @@ export class PrismaService
       await this.$executeRawUnsafe(`ALTER TABLE subtasks ADD COLUMN IF NOT EXISTS "weight" INTEGER DEFAULT 0;`);
       await this.$executeRawUnsafe(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "assigneeIds" JSONB DEFAULT '[]';`);
       await this.$executeRawUnsafe(`ALTER TABLE subtasks ADD COLUMN IF NOT EXISTS "assigneeId" TEXT;`);
+      await this.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS voice_notes (
+          id TEXT PRIMARY KEY,
+          url TEXT NOT NULL,
+          duration INTEGER NOT NULL DEFAULT 0,
+          "projectId" TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          "authorId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          "taskId" TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
       await this.$executeRawUnsafe(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "readAt" TIMESTAMP(3);`);
       await this.$executeRawUnsafe(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "projectId" TEXT;`);
       await this.$executeRawUnsafe(`

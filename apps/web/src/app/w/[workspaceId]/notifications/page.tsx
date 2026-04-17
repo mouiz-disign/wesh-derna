@@ -15,6 +15,7 @@ import {
   Plus,
   AlertTriangle,
   ArrowRightLeft,
+  Mic,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -27,6 +28,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   "task.deadline": Clock,
   "task.overdue": AlertTriangle,
   "task.moved": ArrowRightLeft,
+  "voice.note": Mic,
 };
 
 export default function NotificationsPage() {

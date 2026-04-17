@@ -207,6 +207,19 @@ export interface UnreadCounts {
   dms: Record<string, number>;
 }
 
+// VoiceNote
+export interface VoiceNote {
+  id: string;
+  url: string;
+  duration: number;
+  projectId: string;
+  authorId: string;
+  author: UserPreview;
+  taskId: string | null;
+  task?: { id: string; title: string } | null;
+  createdAt: string;
+}
+
 // Notification
 export interface Notification {
   id: string;

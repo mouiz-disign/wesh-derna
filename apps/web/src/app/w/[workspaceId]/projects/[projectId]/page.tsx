@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -14,11 +14,14 @@ import {
   Table2,
   Kanban,
   GanttChart,
-  BarChart3,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
+  Mic,
+  Square,
 } from "lucide-react";
+import { VoiceNotesDrawer } from "@/components/projects/voice-notes-drawer";
+import { toast } from "sonner";
 import {
   addDays,
   startOfWeek,
@@ -55,6 +58,13 @@ export default function ProjectPage() {
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [filterAssigneeId, setFilterAssigneeId] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordElapsed, setRecordElapsed] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [voiceNoteCount, setVoiceNoteCount] = useState(0);
 
   const fetchProject = async () => {
     try {
@@ -75,7 +85,47 @@ export default function ProjectPage() {
   useEffect(() => {
     fetchProject();
     fetchMembers();
+    api.get(`/projects/${params.projectId}/voice-notes`)
+      .then(({ data }) => setVoiceNoteCount(data.filter((n: any) => !n.taskId).length))
+      .catch(() => {});
   }, [params.projectId]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm",
+      });
+      chunksRef.current = [];
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((t) => t.stop());
+        // Upload
+        const formData = new FormData();
+        formData.append("file", blob, "voice-note.webm");
+        formData.append("duration", String(recordElapsed));
+        try {
+          await api.post(`/projects/${params.projectId}/voice-notes`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          toast.success("Note vocale envoyee");
+          setVoiceNoteCount((c) => c + 1);
+        } catch { toast.error("Erreur upload"); }
+      };
+      mediaRecorder.start(100);
+      setRecording(true);
+      setRecordElapsed(0);
+      timerRef.current = setInterval(() => setRecordElapsed((p) => p + 1), 1000);
+    } catch {}
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
 
   if (loading || !project) {
     return (
@@ -207,6 +257,51 @@ export default function ProjectPage() {
 
       <TaskDetailSheet taskId={selectedTaskId} open={!!selectedTaskId} onOpenChange={(open) => !open && setSelectedTaskId(null)} onUpdated={fetchProject} />
       <ProjectInviteDialog workspaceId={params.workspaceId as string} projectId={params.projectId as string} projectName={project.name} open={showInviteDialog} onClose={() => setShowInviteDialog(false)} />
+
+      {/* Floating mic button */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-2">
+        {recording && (
+          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+            {Math.floor(recordElapsed / 60)}:{String(recordElapsed % 60).padStart(2, "0")}
+          </div>
+        )}
+        <div className="relative">
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            className={`h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-all ${
+              recording
+                ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                : "gradient-primary hover:shadow-xl hover:scale-105"
+            }`}
+          >
+            {recording ? <Square className="h-5 w-5 text-white fill-white" /> : <Mic className="h-6 w-6 text-white" />}
+          </button>
+          {!recording && voiceNoteCount > 0 && (
+            <button
+              onClick={() => setShowVoiceDrawer(true)}
+              className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+            >
+              {voiceNoteCount}
+            </button>
+          )}
+        </div>
+        {!recording && (
+          <button
+            onClick={() => setShowVoiceDrawer(true)}
+            className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
+          >
+            Voir les notes
+          </button>
+        )}
+      </div>
+
+      <VoiceNotesDrawer
+        projectId={params.projectId as string}
+        columns={project.columns}
+        open={showVoiceDrawer}
+        onClose={() => setShowVoiceDrawer(false)}
+        onRefresh={() => { fetchProject(); api.get(`/projects/${params.projectId}/voice-notes`).then(({ data }) => setVoiceNoteCount(data.filter((n: any) => !n.taskId).length)).catch(() => {}); }}
+      />
     </div>
   );
 }

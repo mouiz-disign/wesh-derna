@@ -1,6 +1,8 @@
 import {
   Controller, Post, Get, Put, Delete, Patch, Param, Body, UseGuards, Req,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -8,6 +10,8 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { IsString, IsOptional, IsInt, IsArray } from 'class-validator';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 
 class CreateColumnDto {
   @IsString() name!: string;
@@ -128,5 +132,51 @@ export class ProjectsController {
   @Post('projects/:id/apply-template')
   applyTemplate(@Param('id') id: string, @Body() dto: ApplyTemplateDto) {
     return this.projectsService.applyTemplate(id, dto.template);
+  }
+
+  // ── Voice Notes ──
+
+  @Post('projects/:id/voice-notes')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads', 'voice-notes'),
+        filename: (_req, file, cb) => {
+          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname) || '.webm'}`);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  createVoiceNote(
+    @Param('id') projectId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { duration?: string },
+    @Req() req: Request,
+  ) {
+    return this.projectsService.createVoiceNote(projectId, (req as any).user.id, {
+      url: `/uploads/voice-notes/${file.filename}`,
+      duration: parseInt(body.duration || '0') || 0,
+    });
+  }
+
+  @Get('projects/:id/voice-notes')
+  getVoiceNotes(@Param('id') projectId: string) {
+    return this.projectsService.getVoiceNotes(projectId);
+  }
+
+  @Delete('voice-notes/:id')
+  deleteVoiceNote(@Param('id') id: string) {
+    return this.projectsService.deleteVoiceNote(id);
+  }
+
+  @Post('voice-notes/:id/convert')
+  convertVoiceNote(@Param('id') id: string, @Body() dto: { title: string; columnId: string; priority?: string; assigneeIds?: string[]; deadline?: string }) {
+    return this.projectsService.convertVoiceNoteToTask(id, dto);
+  }
+
+  @Patch('voice-notes/:id/link')
+  linkVoiceNote(@Param('id') id: string, @Body() dto: { taskId: string }) {
+    return this.projectsService.linkVoiceNoteToTask(id, dto.taskId);
   }
 }

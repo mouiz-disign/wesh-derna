@@ -42,6 +42,7 @@ model User {
   channelReads  ChannelRead[]
   dmReads       DMRead[]
   notifSettings ProjectNotifSetting[]
+  voiceNotes    VoiceNote[]
 
   @@map("users")
 }
@@ -93,6 +94,7 @@ model Project {
   invitations    Invitation[]
   notifSettings  ProjectNotifSetting[]
   notifications  Notification[]
+  voiceNotes     VoiceNote[]
 
   @@map("projects")
 }
@@ -145,6 +147,7 @@ model Task {
   comments    Comment[]
   subtasks    Subtask[]
   attachments Attachment[]
+  voiceNotes  VoiceNote[]
 
   @@map("tasks")
 }
@@ -344,4 +347,20 @@ model Invitation {
   project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("invitations")
+}
+
+model VoiceNote {
+  id        String   @id @default(cuid())
+  url       String
+  duration  Int      @default(0)
+  projectId String
+  authorId  String
+  taskId    String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@map("voice_notes")
 }
