@@ -173,7 +173,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
               return (
                 <DropdownMenuItem
                   key={ws.id}
-                  onSelect={() => router.push(`/w/${ws.id}`)}
+                  onClick={() => router.push(`/w/${ws.id}`)}
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <div className="w-6 h-6 rounded bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shrink-0">
@@ -219,7 +219,7 @@ export function AppSidebar({ mobile }: { mobile?: boolean }) {
               </div>
             ) : (
               <DropdownMenuItem
-                onSelect={(e) => { e.preventDefault(); setCreatingWs(true); }}
+                onClick={(e) => { e.preventDefault(); setCreatingWs(true); }}
                 className="flex items-center gap-2 cursor-pointer text-[var(--primary)]"
               >
                 <Plus className="h-3.5 w-3.5" />
