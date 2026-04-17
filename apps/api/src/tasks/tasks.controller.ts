@@ -42,8 +42,8 @@ export class TasksController {
   }
 
   @Patch(':id/move')
-  move(@Param('id') id: string, @Body() dto: MoveTaskDto) {
-    return this.tasksService.move(id, dto);
+  move(@Param('id') id: string, @Body() dto: MoveTaskDto, @Req() req: Request) {
+    return this.tasksService.move(id, dto, (req as any).user.id);
   }
 
   @Delete(':id')

@@ -14,6 +14,7 @@ import {
   Clock,
   Plus,
   AlertTriangle,
+  ArrowRightLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -25,6 +26,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   "task.commented": MessageSquare,
   "task.deadline": Clock,
   "task.overdue": AlertTriangle,
+  "task.moved": ArrowRightLeft,
 };
 
 export default function NotificationsPage() {

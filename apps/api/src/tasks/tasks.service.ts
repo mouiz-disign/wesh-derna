@@ -159,7 +159,14 @@ export class TasksService {
     return task;
   }
 
-  async move(id: string, dto: MoveTaskDto) {
+  async move(id: string, dto: MoveTaskDto, userId?: string) {
+    // Get previous column name before moving
+    const before = await this.prisma.task.findUnique({
+      where: { id },
+      include: { column: { select: { name: true } } },
+    });
+    const fromColumn = before?.column.name || '?';
+
     const task = await this.prisma.task.update({
       where: { id },
       data: {
@@ -172,6 +179,38 @@ export class TasksService {
         column: { select: { name: true } },
       },
     });
+
+    const toColumn = task.column.name;
+
+    // Log the move as a comment (activity trace)
+    if (fromColumn !== toColumn && userId) {
+      const mover = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      await this.prisma.comment.create({
+        data: {
+          content: `📋 ${mover?.name || 'Quelqu\'un'} a deplace cette tache de "${fromColumn}" vers "${toColumn}"`,
+          taskId: id,
+          authorId: userId,
+        },
+      });
+
+      // Notify assignees (except the mover)
+      const assigneeIds: string[] = (task.assigneeIds as string[]) || (task.assigneeId ? [task.assigneeId] : []);
+      for (const aId of assigneeIds) {
+        if (aId === userId) continue;
+        const notif = await this.notifications.create({
+          userId: aId,
+          type: 'task.moved',
+          title: 'Tache deplacee',
+          message: `"${task.title}" : ${fromColumn} → ${toColumn}`,
+          link: `/projects/${task.projectId}`,
+          projectId: task.projectId,
+        });
+        this.gateway.emitToUser(aId, 'notification:new', { notification: notif });
+      }
+    }
 
     // Run automations
     this.automations.runTrigger('task.moved', {
